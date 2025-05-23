@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/contexts/AuthContext';
+import { messagesApi } from '@/lib/api/messages';
+import WebSocketService from '@/lib/services/WebSocketService';
 
 // 定義導航項目類型
 interface NavItem {
@@ -59,23 +61,77 @@ export default function Navbar() {
   // 獲取未讀消息數量
   useEffect(() => {
     if (user) {
-      // 這裡應該是從API獲取未讀消息數量
+      // 從API獲取未讀消息數量
       const fetchUnreadCount = async () => {
         try {
-          // 假設有一個API來獲取未讀消息數量
-          // const response = await messagesApi.getUnreadCount();
-          // setUnreadCount(response.count);
-          
-          // 暫時使用假數據
-          setUnreadCount(3);
+          const response = await messagesApi.getUnreadCount();
+          setUnreadCount(response.count);
         } catch (error) {
           console.error('獲取未讀消息數量失敗', error);
+          setUnreadCount(0);
+        }
+      };
+      
+      // 首次加載時獲取未讀消息數
+      fetchUnreadCount();
+      
+      // 添加頁面可見性變更監聽器，當用戶回到頁面時更新未讀消息數
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === 'visible') {
+          fetchUnreadCount();
+        }
+      };
+      
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      
+      // 設置WebSocket監聽器以獲取實時更新
+      const ws = WebSocketService.getInstance();
+      
+      const handleMessageReceived = () => {
+        fetchUnreadCount();
+      };
+      
+      const handleMessagesRead = () => {
+        fetchUnreadCount();
+      };
+      
+      // 監聽自定義事件以更新未讀消息計數
+      const handleCustomMessagesRead = () => {
+        fetchUnreadCount();
+      };
+      
+      window.addEventListener('messagesRead', handleCustomMessagesRead);
+      
+      // 設置定時器，每30秒輪詢一次未讀消息數
+      const intervalId = setInterval(fetchUnreadCount, 30000);
+      
+      ws.onNewMessage(handleMessageReceived);
+      ws.onMessagesRead(handleMessagesRead);
+      
+      return () => {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+        window.removeEventListener('messagesRead', handleCustomMessagesRead);
+        ws.removeListeners();
+        clearInterval(intervalId);
+      };
+    }
+  }, [user]);
+  
+  // 使用pathname來觸發未讀消息數更新
+  useEffect(() => {
+    if (user) {
+      const fetchUnreadCount = async () => {
+        try {
+          const response = await messagesApi.getUnreadCount();
+          setUnreadCount(response.count);
+        } catch (error) {
+          console.error('路由變更時獲取未讀消息數量失敗', error);
         }
       };
       
       fetchUnreadCount();
     }
-  }, [user]);
+  }, [pathname, user]);
 
   // 處理登出
   const handleLogout = () => {

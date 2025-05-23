@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { messagesApi } from '@/lib/api/messages';
@@ -44,6 +44,22 @@ export default function UserMessagesPage() {
   const [isSearching, setIsSearching] = useState(false);
   const [searchPage, setSearchPage] = useState(1);
   const [searchTotalPages, setSearchTotalPages] = useState(1);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [messagesPage, setMessagesPage] = useState(1);
+  const [hasMoreMessages, setHasMoreMessages] = useState(false);
+  const [isLoadingMoreMessages, setIsLoadingMoreMessages] = useState(false);
+
+  // 滾動到底部的函數
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  // 當訊息更新時自動滾動到底部
+  useEffect(() => {
+    if (activeConversation?.messages.length) {
+      scrollToBottom();
+    }
+  }, [activeConversation?.messages]);
 
   // 檢查用戶是否已登入
   useEffect(() => {
@@ -69,35 +85,47 @@ export default function UserMessagesPage() {
             return prevThreads;
           }
           const updatedThreads = [...prevThreads];
+          // 只有當消息接收者是當前用戶且發送者不是當前用戶時，才增加未讀數
+          const shouldIncrementUnread = message.receiverId === user.id && message.senderId !== user.id;
+          
           updatedThreads[threadIndex] = {
             ...updatedThreads[threadIndex],
             lastMessage: message.content,
-            updatedAt: new Date().toISOString(),
-            unreadCount: message.receiverId === user.id ? 
-              (updatedThreads[threadIndex].unreadCount || 0) + 1 : 
-              updatedThreads[threadIndex].unreadCount,
+            // 使用可選鏈避免 undefined 錯誤
+            unreadCount: shouldIncrementUnread ? 
+              ((updatedThreads[threadIndex].unreadCount || 0) + 1) : 
+              (updatedThreads[threadIndex].unreadCount || 0),
           };
           return updatedThreads;
         });
 
         // 如果當前正在查看這個對話，更新消息列表
         if (activeConversation && 
-            activeConversation.messages.length > 0 && 
-            activeConversation.messages[0].threadId === message.threadId) {
+            activeConversation.threadId === message.threadId) {
           setActiveConversation(prev => {
             if (!prev) return null;
+            
+            // 確保設置正確的 isOwn 屬性
+            const isOwnMessage = message.senderId === user.id;
+            
             return {
               ...prev,
               messages: [...prev.messages, {
                 ...message,
-                isOwn: message.senderId === user.id,
+                isOwn: isOwnMessage,
               }],
+              lastMessage: message.content,
+              lastMessageTime: message.createdAt
             };
           });
-        }
-        
-        // 如果消息不是自己發送的，顯示通知
-        if (message.senderId !== user.id) {
+          
+          // 如果接收到新消息且當前正在查看該對話，則自動標記為已讀
+          if (message.receiverId === user.id && message.senderId !== user.id) {
+            messagesApi.markAsRead([message.id]);
+            ws.markAsRead(message.threadId);
+          }
+        } else if (message.receiverId === user.id && message.senderId !== user.id) {
+          // 如果接收到新消息但未查看該對話，顯示通知
           notificationService.showNotification(
             '新消息',
             `您有一則新消息: ${message.content.substring(0, 30)}${message.content.length > 30 ? '...' : ''}`
@@ -169,6 +197,9 @@ export default function UserMessagesPage() {
         unreadCount: 0
       });
       
+      // 重置分頁狀態
+      setMessagesPage(1);
+      
       const response = await messagesApi.getConversation(
         thread.otherUserId,
         thread.productId
@@ -182,6 +213,21 @@ export default function UserMessagesPage() {
       if (unreadMessageIds.length > 0) {
         await messagesApi.markAsRead(unreadMessageIds);
         ws.markAsRead(thread.threadId);
+        
+        // 發出messagesRead事件通知，以便導航欄能更新未讀消息計數
+        const event = new CustomEvent('messagesRead', {
+          detail: { threadId: thread.threadId }
+        });
+        window.dispatchEvent(event);
+        
+        // 更新本地對話列表的未讀計數
+        setThreads(prevThreads => 
+          prevThreads.map(t => 
+            t.threadId === thread.threadId 
+              ? { ...t, unreadCount: 0 } 
+              : t
+          )
+        );
       }
       
       // 格式化消息以便於顯示
@@ -197,10 +243,13 @@ export default function UserMessagesPage() {
         error: null,
         productId: thread.productId,
         otherUserId: thread.otherUserId,
-        lastMessage: formattedMessages[formattedMessages.length - 1].content,
-        lastMessageTime: formattedMessages[formattedMessages.length - 1].createdAt,
+        lastMessage: formattedMessages.length > 0 ? formattedMessages[formattedMessages.length - 1].content : '',
+        lastMessageTime: formattedMessages.length > 0 ? formattedMessages[formattedMessages.length - 1].createdAt : '',
         unreadCount: 0
       });
+      
+      // 設置是否有更多消息可加載
+      setHasMoreMessages(response.page < response.totalPages);
     } catch (err) {
       console.error('獲取對話消息失敗', err);
       setActiveConversation(prev => ({
@@ -210,10 +259,93 @@ export default function UserMessagesPage() {
       }));
     }
   };
+  
+  // 加載更多歷史訊息
+  const loadMoreMessages = async () => {
+    if (!activeConversation || !selectedThread || isLoadingMoreMessages || !hasMoreMessages) return;
+    
+    try {
+      setIsLoadingMoreMessages(true);
+      
+      const nextPage = messagesPage + 1;
+      
+      const response = await messagesApi.getConversation(
+        activeConversation.otherUserId,
+        activeConversation.productId,
+        nextPage
+      );
+      
+      // 合併並刪除重複消息
+      const newMessages = response.messages.map(msg => ({
+        ...msg,
+        isOwn: msg.senderId === user.id,
+      })) as Array<Message & { isOwn: boolean }>;
+      
+      // 檢查是否有重複消息
+      const existingMessageIds = activeConversation.messages.map(m => m.id);
+      const uniqueNewMessages = newMessages.filter(msg => !existingMessageIds.includes(msg.id));
+      
+      setActiveConversation(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          messages: [...uniqueNewMessages, ...prev.messages]
+        };
+      });
+      
+      setMessagesPage(nextPage);
+      setHasMoreMessages(response.page < response.totalPages);
+    } catch (error) {
+      console.error('加載更多訊息失敗:', error);
+      notificationService.showNotification(
+        '載入失敗',
+        '無法加載更多訊息，請稍後再試'
+      );
+    } finally {
+      setIsLoadingMoreMessages(false);
+    }
+  };
 
   // 發送回覆消息
   const handleSendReply = async (content: string) => {
-    if (!activeConversation || !user) return;
+    if (!activeConversation || !user || !content.trim()) return;
+    
+    // 避免重複發送
+    if (sendingReply) {
+      notificationService.showNotification('提示', '正在發送訊息，請稍候再試');
+      return;
+    }
+    
+    // 設置正在發送狀態
+    setSendingReply(true);
+    
+    // 創建臨時消息用於立即顯示
+    const tempMessage = {
+      id: `temp-${Date.now()}`,
+      content,
+      senderId: user.id,
+      receiverId: activeConversation.otherUserId,
+      threadId: activeConversation.threadId,
+      productId: activeConversation.productId,
+      read: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      isOwn: true
+    };
+    
+    // 先將臨時消息添加到對話，提供即時反饋
+    setActiveConversation(prev => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        messages: [...prev.messages, tempMessage],
+        lastMessage: content,
+        lastMessageTime: tempMessage.createdAt
+      };
+    });
+    
+    // 清空輸入框
+    setReplyMessage('');
 
     try {
       const messageData: SendMessageData = {
@@ -225,20 +357,59 @@ export default function UserMessagesPage() {
 
       const newMessage = await messagesApi.sendMessage(messageData);
       
+      // 用服務器返回的消息替換臨時消息
       setActiveConversation(prev => {
         if (!prev) return null;
         return {
           ...prev,
-          messages: [...prev.messages, newMessage],
+          messages: prev.messages.map(msg => 
+            msg.id === tempMessage.id ? { ...newMessage, isOwn: true } : msg
+          ),
           lastMessage: newMessage.content,
-          lastMessageTime: newMessage.createdAt,
-          unreadCount: 0
+          lastMessageTime: newMessage.createdAt
         };
       });
+      
+      // 自動滾動到底部
+      scrollToBottom();
     } catch (error) {
       console.error('發送消息失敗:', error);
+      
+      // 顯示錯誤通知
+      notificationService.showNotification(
+        '發送失敗',
+        '訊息發送失敗，請檢查網絡連接後重試'
+      );
+      
+      // 移除失敗的臨時消息
+      setActiveConversation(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          messages: prev.messages.filter(msg => msg.id !== tempMessage.id)
+        };
+      });
+    } finally {
+      setSendingReply(false);
     }
   };
+
+  // 處理發送回覆後的已讀消息更新
+  useEffect(() => {
+    const updateNavbarUnreadCount = () => {
+      // 發出自定義事件通知導航欄更新未讀消息數
+      const event = new CustomEvent('messagesRead');
+      window.dispatchEvent(event);
+    };
+    
+    // 在組件掛載和卸載時觸發更新
+    updateNavbarUnreadCount();
+    
+    return () => {
+      // 在組件卸載時也觸發一次更新，確保導航欄數字準確
+      updateNavbarUnreadCount();
+    };
+  }, []);
 
   if (authLoading) {
     return (
@@ -340,7 +511,28 @@ export default function UserMessagesPage() {
                   暫無消息
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="max-h-[calc(100vh-300px)] min-h-[300px] overflow-y-auto space-y-4 p-4">
+                  {hasMoreMessages && (
+                    <div className="flex justify-center py-2">
+                      <button
+                        onClick={loadMoreMessages}
+                        disabled={isLoadingMoreMessages}
+                        className="px-4 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-full transition-colors disabled:opacity-50"
+                      >
+                        {isLoadingMoreMessages ? (
+                          <span className="flex items-center">
+                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            載入中...
+                          </span>
+                        ) : (
+                          '載入更早的訊息'
+                        )}
+                      </button>
+                    </div>
+                  )}
                   {activeConversation.messages.map((message) => (
                     <div
                       key={message.id}
@@ -362,6 +554,7 @@ export default function UserMessagesPage() {
                       </div>
                     </div>
                   ))}
+                  <div ref={messagesEndRef} />
                 </div>
               )}
             </div>

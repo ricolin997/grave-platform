@@ -241,6 +241,26 @@ export class MessagesService {
     );
   }
 
+  async markMessagesAsRead(
+    userId: Types.ObjectId,
+    messageIds: string[],
+  ): Promise<void> {
+    // 將每個消息 ID 轉換為 ObjectId 
+    const objectIds = messageIds.map(id => new Types.ObjectId(id));
+    
+    // 只能將發送給當前用戶的消息標記為已讀
+    await this.messageModel.updateMany(
+      {
+        _id: { $in: objectIds },
+        receiverId: userId,
+        read: false,
+      },
+      {
+        $set: { read: true },
+      }
+    );
+  }
+
   async getUnreadCount(userId: Types.ObjectId): Promise<number> {
     return this.messageModel.countDocuments({
       receiverId: userId,

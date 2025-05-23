@@ -74,6 +74,15 @@ export class MessagesController {
     return this.messagesService.markAsRead(new Types.ObjectId(req.user.id), threadId);
   }
 
+  @Patch('read')
+  async markMessagesAsRead(@Body() body: { messageIds: string[] }, @Req() req: RequestWithUser) {
+    await this.messagesService.markMessagesAsRead(
+      new Types.ObjectId(req.user.id),
+      body.messageIds
+    );
+    return { success: true };
+  }
+
   @Get('conversation/:userId/:productId')
   async getConversation(
     @Req() req: RequestWithUser,
@@ -112,5 +121,11 @@ export class MessagesController {
       page,
       limit,
     );
+  }
+
+  @Get('unread/count')
+  async getUnreadCount(@Req() req: RequestWithUser): Promise<{ count: number }> {
+    const count = await this.messagesService.getUnreadCount(new Types.ObjectId(req.user.id));
+    return { count };
   }
 }
