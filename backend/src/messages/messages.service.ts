@@ -294,34 +294,59 @@ export class MessagesService {
     page: number = 1,
     limit: number = 10,
   ): Promise<MessagesResponseDto> {
-    // 構建搜索條件
-    const searchConditions = {
-      $or: [
-        { senderId: userId },
-        { receiverId: userId }
-      ],
-      $text: { $search: query }
-    };
+    try {
+      console.log(`執行消息搜尋: userId=${userId}, query="${query}", page=${page}, limit=${limit}`);
+      
+      if (!query || query.trim() === '') {
+        return {
+          messages: [],
+          total: 0,
+          page,
+          totalPages: 1
+        };
+      }
+      
+      // 使用正則表達式進行搜尋，而不是 $text
+      const searchRegex = new RegExp(query.trim(), 'i');
+      
+      // 構建搜索條件
+      const searchConditions = {
+        $or: [
+          { senderId: userId },
+          { receiverId: userId }
+        ],
+        content: searchRegex // 使用正則表達式匹配內容
+      };
+      
+      console.log('搜尋條件:', JSON.stringify(searchConditions));
 
-    // 計算總數
-    const total = await this.messageModel.countDocuments(searchConditions);
-    const totalPages = Math.ceil(total / limit);
+      // 計算總數
+      const total = await this.messageModel.countDocuments(searchConditions);
+      console.log(`找到符合條件的消息總數: ${total}`);
+      
+      const totalPages = Math.ceil(total / limit);
 
-    // 獲取消息
-    const messages = await this.messageModel
-      .find(searchConditions)
-      .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit)
-      .lean()
-      .exec();
+      // 獲取消息
+      const messages = await this.messageModel
+        .find(searchConditions)
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean()
+        .exec();
+        
+      console.log(`返回 ${messages.length} 條消息結果`);
 
-    return {
-      messages: messages.map(msg => this.mapToDto(msg)),
-      total,
-      page,
-      totalPages
-    };
+      return {
+        messages: messages.map(msg => this.mapToDto(msg)),
+        total,
+        page,
+        totalPages
+      };
+    } catch (error) {
+      console.error('搜尋消息時出錯:', error);
+      throw error;
+    }
   }
 
   private mapToDto(message: any): MessageResponseDto {

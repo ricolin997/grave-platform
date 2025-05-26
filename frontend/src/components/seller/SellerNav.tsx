@@ -14,8 +14,8 @@ export default function SellerNav() {
     { label: '儀表板', path: '/seller' },
     { label: '商品管理', path: '/seller/products' },
     { label: '銷售統計', path: '/seller/statistics' },
-    { label: '訂單', path: '/seller/orders' },
     { label: '消息', path: '/seller/messages' },
+    { label: '訂單', path: '/seller/orders' },
     { label: '設置', path: '/seller/settings' }
   ];
 

@@ -6,8 +6,8 @@ export interface MessageItem {
   threadId: string;
   productId: string;
   read: boolean;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: Date | string;
+  updatedAt: Date | string;
   isOwn: boolean;
 }
 
@@ -31,4 +31,6 @@ export interface ActiveConversation {
   buyerId: string;
   buyerName: string;
   messages: MessageItem[];
+  loading?: boolean;
+  error?: string | null;
 } 

@@ -14,11 +14,19 @@ export interface MessageThread {
   threadId: string;
   productId: string;
   productName: string;
+  productImage?: string;
+  productTitle?: string;
   otherUserId: string;
   otherUserName: string;
   lastMessage: string;
   lastMessageTime: string;
   unreadCount: number;
+  product?: {
+    id: string;
+    name?: string;
+    title?: string;
+    image?: string;
+  };
 }
 
 export interface SendMessageData {

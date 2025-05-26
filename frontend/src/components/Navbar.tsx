@@ -54,7 +54,7 @@ export default function Navbar() {
     ...(user ? [
       ...(user.role === 'buyer' ? buyerNavItems : []),
       ...(user.role === 'seller' ? sellerNavItems : []),
-      { label: '消息', path: '/user/messages', showBadge: true },
+      { label: '消息', path: user.role === 'seller' ? '/seller/messages' : '/user/messages', showBadge: true },
     ] : guestNavItems),
   ];
 

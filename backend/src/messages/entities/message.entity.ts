@@ -28,4 +28,7 @@ export class Message {
   threadId: string;
 }
 
-export const MessageSchema = SchemaFactory.createForClass(Message); 
+export const MessageSchema = SchemaFactory.createForClass(Message);
+
+// 創建索引以支持全文搜尋
+MessageSchema.index({ content: 'text' }); 

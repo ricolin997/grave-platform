@@ -143,12 +143,16 @@ export default function SellerDashboardPage() {
       {/* 更多功能入口 */}
       <h2 className="text-2xl font-bold mb-6">管理工具</h2>
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
-        <Link href="#" className="block">
-          <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-            <h3 className="text-lg font-semibold text-gray-800 mb-2">消息中心</h3>
-            <p className="text-gray-600">查看與回覆買家的詢問</p>
-          </div>
-        </Link>
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-xl font-semibold mb-4">消息通知</h2>
+          <p className="text-gray-600 mb-4">查看您的最新消息和通知。</p>
+          <Link
+            href="/seller/messages"
+            className="inline-block px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+          >
+            查看消息
+          </Link>
+        </div>
 
         <Link href="#" className="block">
           <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">

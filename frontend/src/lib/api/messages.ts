@@ -17,6 +17,7 @@ export interface MessageThread {
   productId: string;
   productName: string;
   productImage?: string;
+  productTitle?: string;
   otherUserId: string;
   otherUserName: string;
   lastMessage: string;
@@ -49,9 +50,16 @@ export interface ThreadsResponse {
 
 export const messagesApi = {
   // 檢查ID是否為有效的MongoDB ObjectId格式，如果不是，嘗試轉換它
-  ensureValidMongoId: (id: string): string => {
+  ensureValidMongoId: (id: string | undefined | null): string => {
+    // 如果 id 是 undefined 或 null，返回一個默認值
+    if (id === undefined || id === null) {
+      console.error('收到無效的 ID: undefined 或 null');
+      // 返回一個有效的 MongoDB ID 格式（24個0）
+      return '000000000000000000000000';
+    }
+    
     // 輸出調試信息，幫助理解轉換過程
-    console.log(`嘗試轉換ID: ${id}, 類型: ${typeof id}, 長度: ${id?.length}`);
+    console.log(`嘗試轉換ID: ${id}, 類型: ${typeof id}, 長度: ${id.length}`);
     
     // MongoDB ObjectId應為24位十六進制字符
     if (/^[0-9a-fA-F]{24}$/.test(id)) {
@@ -162,10 +170,43 @@ export const messagesApi = {
   },
 
   // 獲取用戶的所有消息對話
-  getThreads: async (page = 1, limit = 10): Promise<ThreadsResponse> => {
+  getThreads: async (page = 1, limit = 10, includeProductDetails = true): Promise<ThreadsResponse> => {
+    console.log('開始獲取消息對話列表, 頁碼:', page, '每頁數量:', limit, '包含商品詳情:', includeProductDetails);
+    
     const response = await axiosInstance.get<ThreadsResponse>('/messages/threads', {
-      params: { page, limit }
+      params: { 
+        page, 
+        limit, 
+        includeProductDetails,
+        includeFullProduct: true,  // 添加參數以獲取完整的商品信息
+        withProductDetails: true   // 兼容可能的其他參數名
+      }
     });
+    
+    console.log('獲取到消息對話列表原始數據:', JSON.stringify(response.data, null, 2));
+    console.log('對話線程數量:', response.data.threads.length);
+    
+    // 檢查每個對話線程的屬性
+    response.data.threads.forEach((thread, index) => {
+      console.log(`對話線程 ${index + 1}:`, JSON.stringify(thread, null, 2));
+      // 特別檢查商品名稱
+      console.log(`對話線程 ${index + 1} 的商品名稱:`, thread.productName || '無商品名稱');
+      
+      // 檢查是否有 product 屬性
+      interface ExtendedThread extends MessageThread {
+        product?: {
+          name?: string;
+          title?: string;
+          image?: string;
+        };
+      }
+      
+      const extendedThread = thread as ExtendedThread;
+      if (extendedThread.product) {
+        console.log(`對話線程 ${index + 1} 的商品詳情:`, JSON.stringify(extendedThread.product, null, 2));
+      }
+    });
+    
     return response.data;
   },
 
@@ -188,10 +229,32 @@ export const messagesApi = {
     return response.data;
   },
 
-  searchMessages: async (query: string, page: number = 1, limit: number = 10) => {
-    const response = await axiosInstance.get('/messages/search', {
-      params: { query, page, limit }
-    });
-    return response.data;
+  searchMessages: async (query: string, page: number = 1, limit: number = 10): Promise<MessagesResponse> => {
+    try {
+      console.log('搜尋訊息, 關鍵字:', query, '頁碼:', page, '每頁數量:', limit);
+      
+      // 確保查詢參數有效
+      if (!query || query.trim() === '') {
+        console.warn('搜尋關鍵字為空');
+        return { messages: [], total: 0, page: 1, totalPages: 1 };
+      }
+      
+      const response = await axiosInstance.get<MessagesResponse>('/messages/search', {
+        params: { 
+          query: query.trim(),
+          page, 
+          limit,
+          role: 'seller' // 明確指定角色為賣家
+        }
+      });
+      
+      console.log('搜尋結果:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('搜尋訊息API錯誤:', error);
+      
+      // 重新拋出錯誤，讓調用者處理
+      throw error;
+    }
   }
 }; 
