@@ -11,6 +11,9 @@ export default function SellerAddProductPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
+  // 商品類型選擇
+  const [productCategory, setProductCategory] = useState<'tomb' | 'contract'>('tomb');
+  
   // 表單數據
   const [formData, setFormData] = useState<Partial<CreateProductData>>({
     basicInfo: {
@@ -71,6 +74,36 @@ export default function SellerAddProductPage() {
   const [showCustomSize, setShowCustomSize] = useState(false);
   const [showCustomFacing, setShowCustomFacing] = useState(false);
 
+  // 處理商品類型變更
+  const handleProductCategoryChange = (category: 'tomb' | 'contract') => {
+    setProductCategory(category);
+    
+    // 重設特性信息，因為不同商品類型的特性信息不同
+    setFormData(prev => ({
+      ...prev,
+      features: {
+        productType: '',
+        size: '',
+        facing: '',
+        floor: 0,
+        religion: '',
+        feng_shui: {
+          environment: [],
+          features: [],
+          orientation: undefined,
+        },
+      },
+    }));
+    
+    // 重設相關錯誤信息
+    const newFieldErrors = { ...fieldErrors };
+    delete newFieldErrors.productType;
+    delete newFieldErrors.size;
+    delete newFieldErrors.facing;
+    delete newFieldErrors.religion;
+    setFieldErrors(newFieldErrors);
+  };
+
   // 驗證欄位
   const validateField = (name: string, value: string | number | boolean | undefined) => {
     let error = '';
@@ -129,11 +162,18 @@ export default function SellerAddProductPage() {
       if (!formData.location?.city) errors.city = '城市不能為空';
       if (!formData.location?.district) errors.district = '地區不能為空';
       
-      // 驗證商品特點
-      if (!formData.features?.productType) errors.productType = '塔位類型不能為空';
-      if (!formData.features?.size) errors.size = '尺寸不能為空';
-      if (!formData.features?.facing) errors.facing = '朝向不能為空';
-      if (!formData.features?.religion) errors.religion = '宗教類型不能為空';
+      // 根據商品類型進行不同的驗證
+      if (productCategory === 'tomb') {
+        // 驗證塔位商品特點
+        if (!formData.features?.productType) errors.productType = '塔位類型不能為空';
+        if (!formData.features?.size) errors.size = '尺寸不能為空';
+        if (!formData.features?.facing) errors.facing = '朝向不能為空';
+        if (!formData.features?.religion) errors.religion = '宗教類型不能為空';
+      } else if (productCategory === 'contract') {
+        // 驗證生前契約商品特點
+        if (!formData.features?.productType) errors.productType = '契約類型不能為空';
+        if (!formData.features?.religion) errors.religion = '宗教類型不能為空';
+      }
       
       // 驗證法律信息
       if (!formData.legalInfo?.registrationNumber) errors.registrationNumber = '登記編號不能為空';
@@ -203,8 +243,8 @@ export default function SellerAddProductPage() {
         },
         features: {
           productType: String(formData.features!.productType || '').trim(),
-          size: String(formData.features!.size || '').trim(),
-          facing: String(formData.features!.facing || '').trim(),
+          size: productCategory === 'contract' ? '生前契約-無需填寫' : String(formData.features!.size || '').trim(),
+          facing: productCategory === 'contract' ? '生前契約-無需填寫' : String(formData.features!.facing || '').trim(),
           floor: Number(formData.features!.floor || 0),
           religion: String(formData.features!.religion || '').trim(),
           feng_shui: {
@@ -261,6 +301,12 @@ export default function SellerAddProductPage() {
             // 處理嵌套屬性，例如 basicInfo.title
             const field = path[path.length - 1];
             validationErrors[field] = error.validationErrors[key];
+            
+            // 如果是生前契約特有的錯誤，進行特殊處理
+            if (productCategory === 'contract' && (field === 'size' || field === 'facing')) {
+              // 這些欄位在生前契約中不應該顯示錯誤，忽略它們
+              delete validationErrors[field];
+            }
           }
         }
         
@@ -405,13 +451,44 @@ export default function SellerAddProductPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">新增塔位商品</h1>
+        <h1 className="text-3xl font-bold">新增商品</h1>
         <button
           onClick={() => router.push('/seller/products')}
           className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
         >
           返回商品管理
         </button>
+      </div>
+      
+      {/* 商品類型選擇 */}
+      <div className="bg-white p-6 rounded-lg shadow-md mb-8">
+        <h2 className="text-xl font-semibold mb-4">選擇商品類型</h2>
+        <div className="flex space-x-4">
+          <button
+            type="button"
+            onClick={() => handleProductCategoryChange('tomb')}
+            className={`flex-1 py-3 rounded-lg border-2 ${
+              productCategory === 'tomb'
+                ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
+                : 'border-gray-300 hover:border-gray-400'
+            }`}
+          >
+            <div className="text-lg font-medium">塔位商品</div>
+            <div className="text-sm text-gray-500">骨灰塔位、納骨塔等</div>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleProductCategoryChange('contract')}
+            className={`flex-1 py-3 rounded-lg border-2 ${
+              productCategory === 'contract'
+                ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
+                : 'border-gray-300 hover:border-gray-400'
+            }`}
+          >
+            <div className="text-lg font-medium">生前契約</div>
+            <div className="text-sm text-gray-500">預先規劃的喪葬服務契約</div>
+          </button>
+        </div>
       </div>
       
       {error && (
@@ -445,7 +522,7 @@ export default function SellerAddProductPage() {
                       {field === 'address' && '詳細地址'}
                       {field === 'city' && '城市'}
                       {field === 'district' && '區域'}
-                      {field === 'productType' && '塔位類型'}
+                      {field === 'productType' && (productCategory === 'tomb' ? '塔位類型' : '契約類型')}
                       {field === 'size' && '尺寸'}
                       {field === 'facing' && '朝向'}
                       {field === 'religion' && '宗教類型'}
@@ -453,6 +530,8 @@ export default function SellerAddProductPage() {
                       {field === 'ownershipCertificate' && '所有權證明'}
                       {field === 'customSize' && '自定義尺寸'}
                       {field === 'customFacing' && '自定義朝向'}
+                      {field === 'contractServices' && '服務內容'}
+                      {field === 'contractDetails' && '契約細節'}
                     </button>: {message}
                   </li>
                 ))}
@@ -646,12 +725,14 @@ export default function SellerAddProductPage() {
         
         {/* 特性信息 */}
         <div className="bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-xl font-semibold mb-4">塔位特性</h2>
+          <h2 className="text-xl font-semibold mb-4">
+            {productCategory === 'tomb' ? '塔位特性' : '契約特性'}
+          </h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-gray-700 mb-2" htmlFor="productType">
-                塔位類型 <span className="text-red-500">*</span>
+                {productCategory === 'tomb' ? '塔位類型' : '契約類型'} <span className="text-red-500">*</span>
               </label>
               <select
                 id="productType"
@@ -663,119 +744,193 @@ export default function SellerAddProductPage() {
                 }`}
                 required
               >
-                <option value="">請選擇塔位類型</option>
-                <option value="單人塔位">單人塔位</option>
-                <option value="雙人塔位">雙人塔位</option>
-                <option value="家族塔位">家族塔位</option>
-                <option value="VIP塔位">VIP塔位</option>
-                <option value="其他">其他</option>
+                <option value="">請選擇{productCategory === 'tomb' ? '塔位類型' : '契約類型'}</option>
+                {productCategory === 'tomb' ? (
+                  <>
+                    <option value="單人塔位">單人塔位</option>
+                    <option value="雙人塔位">雙人塔位</option>
+                    <option value="家族塔位">家族塔位</option>
+                    <option value="VIP塔位">VIP塔位</option>
+                    <option value="其他">其他</option>
+                  </>
+                ) : (
+                  <>
+                    <option value="基本契約">基本契約</option>
+                    <option value="標準契約">標準契約</option>
+                    <option value="豪華契約">豪華契約</option>
+                    <option value="定制契約">定制契約</option>
+                    <option value="其他">其他</option>
+                  </>
+                )}
               </select>
               {fieldErrors.productType && (
                 <p className="text-red-500 text-sm mt-1">{fieldErrors.productType}</p>
               )}
             </div>
             
-            <div>
-              <label className="block text-gray-700 mb-2" htmlFor="size">
-                尺寸 <span className="text-red-500">*</span>
-              </label>
-              <select
-                id="size"
-                name="size"
-                value={formData.features?.size || ''}
-                onChange={handleFeaturesChange}
-                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                  fieldErrors.size ? 'border-red-500 bg-red-50' : ''
-                }`}
-                required
-              >
-                <option value="">請選擇尺寸</option>
-                <option value="2尺X2尺">2尺X2尺</option>
-                <option value="50公分X50公分">50公分X50公分</option>
-                <option value="2.5尺X2.5尺">2.5尺X2.5尺</option>
-                <option value="3尺X3尺">3尺X3尺</option>
-                <option value="60公分X60公分">60公分X60公分</option>
-                <option value="70公分X70公分">70公分X70公分</option>
-                <option value="80公分X80公分">80公分X80公分</option>
-                <option value="2尺X3尺">2尺X3尺</option>
-                <option value="2尺X4尺">2尺X4尺</option>
-                <option value="其他尺寸">其他尺寸</option>
-              </select>
-              
-              {showCustomSize && (
-                <div className="mt-2">
-                  <input
-                    type="text"
-                    id="customSize"
-                    name="customSize"
-                    value={formData.features?.size !== '其他尺寸' ? formData.features?.size || '' : ''}
-                    onChange={handleCustomSizeChange}
-                    className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    placeholder="請輸入自定義尺寸，如：1.8尺X2.2尺"
+            {productCategory === 'tomb' && (
+              <>
+                <div>
+                  <label className="block text-gray-700 mb-2" htmlFor="size">
+                    尺寸 <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    id="size"
+                    name="size"
+                    value={formData.features?.size || ''}
+                    onChange={handleFeaturesChange}
+                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                      fieldErrors.size ? 'border-red-500 bg-red-50' : ''
+                    }`}
                     required
+                  >
+                    <option value="">請選擇尺寸</option>
+                    <option value="2尺X2尺">2尺X2尺</option>
+                    <option value="50公分X50公分">50公分X50公分</option>
+                    <option value="2.5尺X2.5尺">2.5尺X2.5尺</option>
+                    <option value="3尺X3尺">3尺X3尺</option>
+                    <option value="60公分X60公分">60公分X60公分</option>
+                    <option value="70公分X70公分">70公分X70公分</option>
+                    <option value="80公分X80公分">80公分X80公分</option>
+                    <option value="2尺X3尺">2尺X3尺</option>
+                    <option value="2尺X4尺">2尺X4尺</option>
+                    <option value="其他尺寸">其他尺寸</option>
+                  </select>
+                  
+                  {showCustomSize && (
+                    <div className="mt-2">
+                      <input
+                        type="text"
+                        id="customSize"
+                        name="customSize"
+                        value={formData.features?.size !== '其他尺寸' ? formData.features?.size || '' : ''}
+                        onChange={handleCustomSizeChange}
+                        className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder="請輸入自定義尺寸，如：1.8尺X2.2尺"
+                        required
+                      />
+                    </div>
+                  )}
+                </div>
+                
+                <div>
+                  <label className="block text-gray-700 mb-2" htmlFor="facing">
+                    朝向 <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    id="facing"
+                    name="facing"
+                    value={formData.features?.facing || ''}
+                    onChange={handleFeaturesChange}
+                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                      fieldErrors.facing ? 'border-red-500 bg-red-50' : ''
+                    }`}
+                    required
+                  >
+                    <option value="">請選擇朝向</option>
+                    <option value="坐北朝南">坐北朝南</option>
+                    <option value="坐南朝北">坐南朝北</option>
+                    <option value="坐東朝西">坐東朝西</option>
+                    <option value="坐西朝東">坐西朝東</option>
+                    <option value="坐東北朝西南">坐東北朝西南</option>
+                    <option value="坐西南朝東北">坐西南朝東北</option>
+                    <option value="坐東南朝西北">坐東南朝西北</option>
+                    <option value="坐西北朝東南">坐西北朝東南</option>
+                    <option value="朝山">朝山</option>
+                    <option value="朝水">朝水</option>
+                    <option value="其他朝向">其他朝向</option>
+                  </select>
+                  
+                  {showCustomFacing && (
+                    <div className="mt-2">
+                      <input
+                        type="text"
+                        id="customFacing"
+                        name="customFacing"
+                        value={formData.features?.facing !== '其他朝向' ? formData.features?.facing || '' : ''}
+                        onChange={handleCustomFacingChange}
+                        className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder="請輸入自定義朝向"
+                        required
+                      />
+                    </div>
+                  )}
+                </div>
+                
+                <div>
+                  <label className="block text-gray-700 mb-2" htmlFor="floor">
+                    樓層
+                  </label>
+                  <input
+                    type="number"
+                    id="floor"
+                    name="floor"
+                    value={formData.features?.floor || ''}
+                    onChange={handleFeaturesChange}
+                    className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="請輸入樓層數字，例如：1、2、3"
                   />
                 </div>
-              )}
-            </div>
+              </>
+            )}
             
-            <div>
-              <label className="block text-gray-700 mb-2" htmlFor="facing">
-                朝向 <span className="text-red-500">*</span>
-              </label>
-              <select
-                id="facing"
-                name="facing"
-                value={formData.features?.facing || ''}
-                onChange={handleFeaturesChange}
-                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                  fieldErrors.facing ? 'border-red-500 bg-red-50' : ''
-                }`}
-                required
-              >
-                <option value="">請選擇朝向</option>
-                <option value="坐北朝南">坐北朝南</option>
-                <option value="坐南朝北">坐南朝北</option>
-                <option value="坐東朝西">坐東朝西</option>
-                <option value="坐西朝東">坐西朝東</option>
-                <option value="坐東北朝西南">坐東北朝西南</option>
-                <option value="坐西南朝東北">坐西南朝東北</option>
-                <option value="坐東南朝西北">坐東南朝西北</option>
-                <option value="坐西北朝東南">坐西北朝東南</option>
-                <option value="朝山">朝山</option>
-                <option value="朝水">朝水</option>
-                <option value="其他朝向">其他朝向</option>
-              </select>
-              
-              {showCustomFacing && (
-                <div className="mt-2">
-                  <input
-                    type="text"
-                    id="customFacing"
-                    name="customFacing"
-                    value={formData.features?.facing !== '其他朝向' ? formData.features?.facing || '' : ''}
-                    onChange={handleCustomFacingChange}
+            {productCategory === 'contract' && (
+              <>
+                <div>
+                  <label className="block text-gray-700 mb-2" htmlFor="contractServices">
+                    服務內容
+                  </label>
+                  <textarea
+                    id="contractServices"
+                    name="contractServices"
+                    value={formData.features?.feng_shui?.features.join('\n') || ''}
+                    onChange={(e) => {
+                      const value = e.target.value.split('\n');
+                      setFormData(prev => ({
+                        ...prev,
+                        features: {
+                          ...prev.features!,
+                          feng_shui: {
+                            ...prev.features?.feng_shui || { environment: [], orientation: undefined },
+                            features: value,
+                          },
+                        },
+                      }));
+                    }}
+                    rows={4}
                     className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    placeholder="請輸入自定義朝向"
-                    required
+                    placeholder="請詳細列出契約包含的服務內容，每行一項，如：遺體接運、壽衣著裝、告別式場地"
                   />
                 </div>
-              )}
-            </div>
-            
-            <div>
-              <label className="block text-gray-700 mb-2" htmlFor="floor">
-                樓層
-              </label>
-              <input
-                type="number"
-                id="floor"
-                name="floor"
-                value={formData.features?.floor || ''}
-                onChange={handleFeaturesChange}
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="請輸入樓層數字，例如：1、2、3"
-              />
-            </div>
+                
+                <div>
+                  <label className="block text-gray-700 mb-2" htmlFor="contractDetails">
+                    契約細節
+                  </label>
+                  <textarea
+                    id="contractDetails"
+                    name="contractDetails"
+                    value={formData.features?.feng_shui?.environment.join('\n') || ''}
+                    onChange={(e) => {
+                      const value = e.target.value.split('\n');
+                      setFormData(prev => ({
+                        ...prev,
+                        features: {
+                          ...prev.features!,
+                          feng_shui: {
+                            ...prev.features?.feng_shui || { features: [], orientation: undefined },
+                            environment: value,
+                          },
+                        },
+                      }));
+                    }}
+                    rows={4}
+                    className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="請描述契約細節，每行一項，如：適用期限、升級選項"
+                  />
+                </div>
+              </>
+            )}
             
             <div>
               <label className="block text-gray-700 mb-2" htmlFor="religion">
@@ -800,60 +955,64 @@ export default function SellerAddProductPage() {
                 <option value="其他">其他</option>
               </select>
             </div>
-            
-            <div>
-              <label className="block text-gray-700 mb-2" htmlFor="feng_shui_environment">
-                環境描述
-              </label>
-              <textarea
-                id="feng_shui_environment"
-                name="feng_shui_environment"
-                value={formData.features?.feng_shui?.environment.join('\n') || ''}
-                onChange={(e) => {
-                  const value = e.target.value.split('\n');
-                  setFormData(prev => ({
-                    ...prev,
-                    features: {
-                      ...prev.features!,
-                      feng_shui: {
-                        ...prev.features?.feng_shui || { features: [], orientation: undefined },
-                        environment: value,
-                      },
-                    },
-                  }));
-                }}
-                rows={4}
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="請描述周圍環境，每行一項特點，如：山水環繞、靠近主道"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-gray-700 mb-2" htmlFor="feng_shui_features">
-                風水特點
-              </label>
-              <textarea
-                id="feng_shui_features"
-                name="feng_shui_features"
-                value={formData.features?.feng_shui?.features.join('\n') || ''}
-                onChange={(e) => {
-                  const value = e.target.value.split('\n');
-                  setFormData(prev => ({
-                    ...prev,
-                    features: {
-                      ...prev.features!,
-                      feng_shui: {
-                        ...prev.features?.feng_shui || { environment: [], orientation: undefined },
-                        features: value,
-                      },
-                    },
-                  }));
-                }}
-                rows={4}
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="請描述風水特點，每行一項，如：藏風聚氣、左青龍右白虎"
-              />
-            </div>
+
+            {productCategory === 'tomb' && (
+              <>
+                <div>
+                  <label className="block text-gray-700 mb-2" htmlFor="feng_shui_environment">
+                    環境描述
+                  </label>
+                  <textarea
+                    id="feng_shui_environment"
+                    name="feng_shui_environment"
+                    value={formData.features?.feng_shui?.environment.join('\n') || ''}
+                    onChange={(e) => {
+                      const value = e.target.value.split('\n');
+                      setFormData(prev => ({
+                        ...prev,
+                        features: {
+                          ...prev.features!,
+                          feng_shui: {
+                            ...prev.features?.feng_shui || { features: [], orientation: undefined },
+                            environment: value,
+                          },
+                        },
+                      }));
+                    }}
+                    rows={4}
+                    className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="請描述周圍環境，每行一項特點，如：山水環繞、靠近主道"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-gray-700 mb-2" htmlFor="feng_shui_features">
+                    風水特點
+                  </label>
+                  <textarea
+                    id="feng_shui_features"
+                    name="feng_shui_features"
+                    value={formData.features?.feng_shui?.features.join('\n') || ''}
+                    onChange={(e) => {
+                      const value = e.target.value.split('\n');
+                      setFormData(prev => ({
+                        ...prev,
+                        features: {
+                          ...prev.features!,
+                          feng_shui: {
+                            ...prev.features?.feng_shui || { environment: [], orientation: undefined },
+                            features: value,
+                          },
+                        },
+                      }));
+                    }}
+                    rows={4}
+                    className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="請描述風水特點，每行一項，如：藏風聚氣、左青龍右白虎"
+                  />
+                </div>
+              </>
+            )}
           </div>
         </div>
         

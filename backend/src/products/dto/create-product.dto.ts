@@ -11,6 +11,7 @@ import {
   IsEnum
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { IsRequiredForTombProduct } from '../validators/product-type.validator';
 
 // 基本信息
 class BasicInfoDto {
@@ -116,11 +117,11 @@ class FeaturesDto {
   productType: string;
 
   @IsString()
-  @IsNotEmpty()
+  @IsRequiredForTombProduct({ message: 'size 欄位對塔位商品是必填的' })
   size: string;
 
   @IsString()
-  @IsNotEmpty()
+  @IsRequiredForTombProduct({ message: 'facing 欄位對塔位商品是必填的' })
   facing: string;
 
   @IsNumber()

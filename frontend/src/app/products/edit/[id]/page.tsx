@@ -14,6 +14,9 @@ export default function EditProductPage() {
   const [error, setError] = useState<string | null>(null);
   const [product, setProduct] = useState<Product | null>(null);
   
+  // 商品類型選擇（塔位或生前契約）
+  const [productCategory, setProductCategory] = useState<'tomb' | 'contract'>('tomb');
+  
   // 表單數據
   const [formData, setFormData] = useState<UpdateProductData>({
     basicInfo: {
@@ -81,6 +84,10 @@ export default function EditProductPage() {
         const productData = await productsApi.getProduct(params.id as string);
         setProduct(productData);
         
+        // 根據商品類型判斷是塔位商品還是生前契約
+        const isContract = ['基本契約', '標準契約', '豪華契約', '定制契約'].includes(productData.features.productType);
+        setProductCategory(isContract ? 'contract' : 'tomb');
+        
         // 設置表單數據
         setFormData({
           basicInfo: productData.basicInfo,
@@ -122,6 +129,18 @@ export default function EditProductPage() {
       
       // 根據商品狀態確定可以更新的字段
       let updateData: UpdateProductData = { ...formData };
+
+      // 如果是生前契約，確保提供塔位特有欄位的默認值，解決後端驗證問題
+      if (productCategory === 'contract') {
+        updateData = {
+          ...updateData,
+          features: {
+            ...updateData.features!,
+            size: '生前契約-無需填寫',
+            facing: '生前契約-無需填寫',
+          }
+        };
+      }
       
       // 如果商品已預訂，只更新允許的字段
       if (product?.status === 'reserved') {
@@ -507,14 +526,16 @@ export default function EditProductPage() {
           </div>
         </div>
         
-        {/* 塔位特性 */}
+        {/* 塔位特性/契約特性 */}
         <div className="bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-xl font-semibold mb-4">塔位特性</h2>
+          <h2 className="text-xl font-semibold mb-4">
+            {productCategory === 'tomb' ? '塔位特性' : '契約特性'}
+          </h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-gray-700 mb-2" htmlFor="productType">
-                塔位類型 <span className="text-red-500">*</span>
+                {productCategory === 'tomb' ? '塔位類型' : '契約類型'} <span className="text-red-500">*</span>
               </label>
               <select
                 id="productType"
@@ -525,28 +546,132 @@ export default function EditProductPage() {
                 required
               >
                 <option value="">請選擇類型</option>
-                <option value="單人塔位">單人塔位</option>
-                <option value="雙人塔位">雙人塔位</option>
-                <option value="家族塔位">家族塔位</option>
-                <option value="VIP塔位">VIP塔位</option>
-                <option value="其他">其他</option>
+                {productCategory === 'tomb' ? (
+                  <>
+                    <option value="單人塔位">單人塔位</option>
+                    <option value="雙人塔位">雙人塔位</option>
+                    <option value="家族塔位">家族塔位</option>
+                    <option value="VIP塔位">VIP塔位</option>
+                    <option value="其他">其他</option>
+                  </>
+                ) : (
+                  <>
+                    <option value="基本契約">基本契約</option>
+                    <option value="標準契約">標準契約</option>
+                    <option value="豪華契約">豪華契約</option>
+                    <option value="定制契約">定制契約</option>
+                    <option value="其他">其他</option>
+                  </>
+                )}
               </select>
             </div>
             
-            <div>
-              <label className="block text-gray-700 mb-2" htmlFor="size">
-                塔位尺寸
-              </label>
-              <input
-                type="text"
-                id="size"
-                name="size"
-                value={formData.features?.size || ''}
-                onChange={handleFeaturesChange}
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="例如：30x30cm"
-              />
-            </div>
+            {productCategory === 'tomb' && (
+              <>
+                <div>
+                  <label className="block text-gray-700 mb-2" htmlFor="size">
+                    塔位尺寸
+                  </label>
+                  <input
+                    type="text"
+                    id="size"
+                    name="size"
+                    value={formData.features?.size || ''}
+                    onChange={handleFeaturesChange}
+                    className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="例如：30x30cm"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-gray-700 mb-2" htmlFor="facing">
+                    朝向
+                  </label>
+                  <input
+                    type="text"
+                    id="facing"
+                    name="facing"
+                    value={formData.features?.facing || ''}
+                    onChange={handleFeaturesChange}
+                    className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="例如：坐北朝南"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-gray-700 mb-2" htmlFor="feng_shui.orientation">
+                    風水朝向
+                  </label>
+                  <input
+                    type="text"
+                    id="feng_shui.orientation"
+                    name="feng_shui.orientation"
+                    value={formData.features?.feng_shui?.orientation || ''}
+                    onChange={handleFeaturesChange}
+                    className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="例如：坐北朝南"
+                  />
+                </div>
+              </>
+            )}
+            
+            {productCategory === 'contract' && (
+              <>
+                <div>
+                  <label className="block text-gray-700 mb-2" htmlFor="contractServices">
+                    服務內容
+                  </label>
+                  <textarea
+                    id="contractServices"
+                    name="contractServices"
+                    value={formData.features?.feng_shui?.features.join('\n') || ''}
+                    onChange={(e) => {
+                      const value = e.target.value.split('\n');
+                      setFormData(prev => ({
+                        ...prev,
+                        features: {
+                          ...prev.features!,
+                          feng_shui: {
+                            ...prev.features?.feng_shui || { environment: [], orientation: undefined },
+                            features: value,
+                          },
+                        },
+                      }));
+                    }}
+                    rows={4}
+                    className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="請詳細列出契約包含的服務內容，每行一項，如：遺體接運、壽衣著裝、告別式場地"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-gray-700 mb-2" htmlFor="contractDetails">
+                    契約細節
+                  </label>
+                  <textarea
+                    id="contractDetails"
+                    name="contractDetails"
+                    value={formData.features?.feng_shui?.environment.join('\n') || ''}
+                    onChange={(e) => {
+                      const value = e.target.value.split('\n');
+                      setFormData(prev => ({
+                        ...prev,
+                        features: {
+                          ...prev.features!,
+                          feng_shui: {
+                            ...prev.features?.feng_shui || { features: [], orientation: undefined },
+                            environment: value,
+                          },
+                        },
+                      }));
+                    }}
+                    rows={4}
+                    className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="請描述契約細節，每行一項，如：適用期限、升級選項"
+                  />
+                </div>
+              </>
+            )}
             
             <div>
               <label className="block text-gray-700 mb-2" htmlFor="religion">
@@ -569,36 +694,6 @@ export default function EditProductPage() {
                 <option value="無宗教限制">無宗教限制</option>
                 <option value="其他">其他</option>
               </select>
-            </div>
-            
-            <div>
-              <label className="block text-gray-700 mb-2" htmlFor="facing">
-                朝向
-              </label>
-              <input
-                type="text"
-                id="facing"
-                name="facing"
-                value={formData.features?.facing || ''}
-                onChange={handleFeaturesChange}
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="例如：坐北朝南"
-              />
-            </div>
-
-            <div>
-              <label className="block text-gray-700 mb-2" htmlFor="feng_shui.orientation">
-                風水朝向
-              </label>
-              <input
-                type="text"
-                id="feng_shui.orientation"
-                name="feng_shui.orientation"
-                value={formData.features?.feng_shui?.orientation || ''}
-                onChange={handleFeaturesChange}
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="例如：坐北朝南"
-              />
             </div>
           </div>
         </div>

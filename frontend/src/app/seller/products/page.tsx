@@ -230,7 +230,7 @@ export default function SellerProductsPage() {
       ) : products.length === 0 ? (
         <div className="bg-gray-50 border border-gray-200 p-8 rounded-lg text-center">
           <h3 className="text-lg font-semibold mb-2">還沒有商品</h3>
-          <p className="text-gray-600 mb-4">您目前沒有任何商品。點擊「新增商品」開始吧！</p>
+          <p className="text-gray-600 mb-4">您目前沒有任何商品。點擊「新增商品」來新增塔位商品或生前契約！</p>
           <Link
             href="/seller/products/new"
             className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"

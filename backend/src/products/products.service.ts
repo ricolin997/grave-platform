@@ -37,6 +37,21 @@ export class ProductsService {
         throw new BadRequestException('features.productType 必須是字符串而不是對象');
       }
 
+      // 判斷產品類型
+      const contractProductTypes = ['基本契約', '標準契約', '豪華契約', '定制契約'];
+      const isContractProduct = contractProductTypes.includes(createProductDto.features.productType);
+      
+      // 如果是生前契約產品類型，確保 size 和 facing 欄位有默認值
+      if (isContractProduct) {
+        console.log('處理生前契約商品特有欄位');
+        if (!createProductDto.features.size) {
+          createProductDto.features.size = '生前契約-無需填寫';
+        }
+        if (!createProductDto.features.facing) {
+          createProductDto.features.facing = '生前契約-無需填寫';
+        }
+      }
+
       // 確保 feng_shui 屬性是對象而不是 null
       if (!createProductDto.features.feng_shui) {
         console.log('feng_shui 為空，設置默認值');
@@ -290,6 +305,23 @@ export class ProductsService {
       // 檢查是否為賣家
       if (product.sellerId.toString() !== userId) {
         throw new BadRequestException('只有賣家可以更新自己的商品');
+      }
+      
+      // 判斷是否為生前契約產品
+      if (updateProductDto.features && updateProductDto.features.productType) {
+        const contractProductTypes = ['基本契約', '標準契約', '豪華契約', '定制契約'];
+        const isContractProduct = contractProductTypes.includes(updateProductDto.features.productType);
+        
+        // 如果是生前契約產品，確保 size 和 facing 欄位有默認值
+        if (isContractProduct) {
+          console.log('處理更新生前契約商品特有欄位');
+          if (!updateProductDto.features.size) {
+            updateProductDto.features.size = '生前契約-無需填寫';
+          }
+          if (!updateProductDto.features.facing) {
+            updateProductDto.features.facing = '生前契約-無需填寫';
+          }
+        }
       }
 
       // 如果狀態從草稿變為已發佈，設置發佈時間

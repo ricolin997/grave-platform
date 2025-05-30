@@ -102,7 +102,7 @@ export default function HomePage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
           <div className="bg-white rounded-lg shadow-md p-6">
             <h2 className="text-xl font-semibold mb-4">商品管理</h2>
-            <p className="text-gray-600 mb-4">管理您的塔位商品，查看銷售狀態。</p>
+            <p className="text-gray-600 mb-4">管理您的塔位商品和生前契約，查看銷售狀態。</p>
             <Link
               href="/seller/products"
               className="inline-block px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
@@ -125,7 +125,7 @@ export default function HomePage() {
         
         <div className="bg-white rounded-lg shadow-md p-6 mb-8">
           <h2 className="text-xl font-semibold mb-4">新增商品</h2>
-          <p className="text-gray-600 mb-4">快速新增塔位商品，立即開始銷售。</p>
+          <p className="text-gray-600 mb-4">快速新增塔位商品或生前契約，立即開始銷售。</p>
           <Link
             href="/seller/products/new"
             className="inline-block px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
