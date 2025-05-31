@@ -33,7 +33,7 @@ export default function Navbar() {
 
   // 定義買家導航項目
   const buyerNavItems: NavItem[] = [
-    { label: '瀏覽塔位', path: '/products' },
+    { label: '商品瀏覽', path: '/products' },
     { label: '我的收藏', path: '/user/favorites' },
   ];
 
@@ -45,7 +45,7 @@ export default function Navbar() {
 
   // 未登入用戶導航項目
   const guestNavItems: NavItem[] = [
-    { label: '瀏覽塔位', path: '/products' }, // 未登入時也顯示瀏覽功能
+    { label: '商品瀏覽', path: '/products' }, // 未登入時也顯示瀏覽功能
   ];
 
   // 根據用戶角色選擇導航項目

@@ -43,6 +43,10 @@ const typeOptions = [
   { value: '雙人塔位', label: '雙人塔位' },
   { value: '家族塔位', label: '家族塔位' },
   { value: 'VIP塔位', label: 'VIP塔位' },
+  { value: '基本契約', label: '基本契約' },
+  { value: '標準契約', label: '標準契約' },
+  { value: '豪華契約', label: '豪華契約' },
+  { value: '定制契約', label: '定制契約' },
   { value: '其他', label: '其他' },
 ];
 
@@ -287,7 +291,7 @@ export default function ProductFilter() {
           
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              塔位類型
+              商品類型
             </label>
             <select
               name="type"

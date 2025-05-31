@@ -14,7 +14,7 @@ const filterLabels: Record<string, string> = {
   city: '城市',
   district: '區域',
   religion: '宗教信仰',
-  type: '塔位類型',
+  type: '商品類型',
   minPrice: '最低價格',
   maxPrice: '最高價格',
   floor: '樓層',
@@ -243,12 +243,12 @@ export default function ProductsPage() {
       description += '以下條件';
     }
     
-    return `${description}的塔位`;
+    return `${description}的商品`;
   };
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-6">塔位列表</h1>
+      <h1 className="text-3xl font-bold mb-6">商品列表</h1>
       
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         {/* 左側過濾器 */}
@@ -324,13 +324,13 @@ export default function ProductsPage() {
             </div>
           ) : products.length === 0 ? (
             <div className="bg-gray-50 border border-gray-200 p-8 rounded-lg text-center">
-              <h3 className="text-lg font-semibold mb-2">未找到符合條件的塔位</h3>
-              <p className="text-gray-600 mb-4">請嘗試調整搜索條件或查看所有塔位</p>
+              <h3 className="text-lg font-semibold mb-2">未找到符合條件的商品</h3>
+              <p className="text-gray-600 mb-4">請嘗試調整搜索條件或查看所有商品</p>
               <Link
                 href="/products"
                 className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"
               >
-                查看所有塔位
+                查看所有商品
               </Link>
             </div>
           ) : (

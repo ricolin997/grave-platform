@@ -216,7 +216,7 @@ export default function ProductDetailPage() {
           </li>
           <li className="before:content-['>'] before:mx-2 before:text-gray-400">
             <Link href="/products" className="text-gray-500 hover:text-indigo-600">
-              塔位列表
+              商品列表
             </Link>
           </li>
           <li className="before:content-['>'] before:mx-2 before:text-gray-400">
@@ -416,7 +416,9 @@ export default function ProductDetailPage() {
             </div>
             
             <div className="col-span-1">
-              <span className="text-gray-600">塔位類型:</span>
+              <span className="text-gray-600">
+                {['基本契約', '標準契約', '豪華契約', '定制契約'].includes(product.features.productType) ? '契約類型:' : '塔位類型:'}
+              </span>
               <div className="font-medium mt-1">{product.features.productType}</div>
             </div>
             
@@ -582,7 +584,7 @@ export default function ProductDetailPage() {
 
       {/* 詳細規格 */}
       <div className="border-t pt-8 mb-10">
-        <h2 className="text-2xl font-bold mb-6">塔位詳細資訊</h2>
+        <h2 className="text-2xl font-bold mb-6">商品詳細資訊</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
           <div className="bg-gray-50 p-4 rounded-lg">
             <h3 className="text-lg font-semibold mb-3">位置資訊</h3>
@@ -606,31 +608,80 @@ export default function ProductDetailPage() {
             </dl>
           </div>
 
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h3 className="text-lg font-semibold mb-3">塔位特性</h3>
-            <dl className="space-y-2">
-              <div className="grid grid-cols-3">
-                <dt className="text-gray-600">類型：</dt>
-                <dd className="col-span-2 font-medium">{product.features.productType}</dd>
-              </div>
-              <div className="grid grid-cols-3">
-                <dt className="text-gray-600">尺寸：</dt>
-                <dd className="col-span-2 font-medium">{product.features.size}</dd>
-              </div>
-              <div className="grid grid-cols-3">
-                <dt className="text-gray-600">朝向：</dt>
-                <dd className="col-span-2 font-medium">{product.features.facing}</dd>
-              </div>
-              <div className="grid grid-cols-3">
-                <dt className="text-gray-600">樓層：</dt>
-                <dd className="col-span-2 font-medium">{product.features.floor}樓</dd>
-              </div>
-              <div className="grid grid-cols-3">
-                <dt className="text-gray-600">宗教：</dt>
-                <dd className="col-span-2 font-medium">{product.features.religion}</dd>
-              </div>
-            </dl>
-          </div>
+          {/* 根據商品類型顯示不同的特性內容 */}
+          {(() => {
+            const isContractProduct = ['基本契約', '標準契約', '豪華契約', '定制契約'].includes(product.features.productType);
+            
+            if (isContractProduct) {
+              return (
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h3 className="text-lg font-semibold mb-3">契約特性</h3>
+                  <dl className="space-y-2">
+                    <div className="grid grid-cols-3">
+                      <dt className="text-gray-600">契約類型：</dt>
+                      <dd className="col-span-2 font-medium">{product.features.productType}</dd>
+                    </div>
+                    <div className="grid grid-cols-3">
+                      <dt className="text-gray-600">宗教：</dt>
+                      <dd className="col-span-2 font-medium">{product.features.religion}</dd>
+                    </div>
+                    {product.features.feng_shui.features && product.features.feng_shui.features.length > 0 && (
+                      <div className="grid grid-cols-3">
+                        <dt className="text-gray-600">服務內容：</dt>
+                        <dd className="col-span-2">
+                          <ul className="list-disc pl-5 space-y-1">
+                            {product.features.feng_shui.features.map((feature, index) => (
+                              <li key={index} className="font-medium">{feature}</li>
+                            ))}
+                          </ul>
+                        </dd>
+                      </div>
+                    )}
+                    {product.features.feng_shui.environment && product.features.feng_shui.environment.length > 0 && (
+                      <div className="grid grid-cols-3">
+                        <dt className="text-gray-600">契約細節：</dt>
+                        <dd className="col-span-2">
+                          <ul className="list-disc pl-5 space-y-1">
+                            {product.features.feng_shui.environment.map((item, index) => (
+                              <li key={index} className="font-medium">{item}</li>
+                            ))}
+                          </ul>
+                        </dd>
+                      </div>
+                    )}
+                  </dl>
+                </div>
+              );
+            } else {
+              return (
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h3 className="text-lg font-semibold mb-3">塔位特性</h3>
+                  <dl className="space-y-2">
+                    <div className="grid grid-cols-3">
+                      <dt className="text-gray-600">類型：</dt>
+                      <dd className="col-span-2 font-medium">{product.features.productType}</dd>
+                    </div>
+                    <div className="grid grid-cols-3">
+                      <dt className="text-gray-600">尺寸：</dt>
+                      <dd className="col-span-2 font-medium">{product.features.size}</dd>
+                    </div>
+                    <div className="grid grid-cols-3">
+                      <dt className="text-gray-600">朝向：</dt>
+                      <dd className="col-span-2 font-medium">{product.features.facing}</dd>
+                    </div>
+                    <div className="grid grid-cols-3">
+                      <dt className="text-gray-600">樓層：</dt>
+                      <dd className="col-span-2 font-medium">{product.features.floor}樓</dd>
+                    </div>
+                    <div className="grid grid-cols-3">
+                      <dt className="text-gray-600">宗教：</dt>
+                      <dd className="col-span-2 font-medium">{product.features.religion}</dd>
+                    </div>
+                  </dl>
+                </div>
+              );
+            }
+          })()}
 
           <div className="bg-gray-50 p-4 rounded-lg">
             <h3 className="text-lg font-semibold mb-3">周邊環境</h3>
@@ -664,25 +715,28 @@ export default function ProductDetailPage() {
             </dl>
           </div>
 
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h3 className="text-lg font-semibold mb-3">風水資訊</h3>
-            <dl className="space-y-2">
-              <div className="grid grid-cols-3">
-                <dt className="text-gray-600">方位：</dt>
-                <dd className="col-span-2 font-medium">
-                  {product.features.feng_shui.orientation || '未提供'}
-                </dd>
-              </div>
-              <div className="grid grid-cols-3">
-                <dt className="text-gray-600">環境：</dt>
-                <dd className="col-span-2 font-medium">
-                  {product.features.feng_shui.environment.length > 0 
-                    ? product.features.feng_shui.environment.join('、') 
-                    : '未提供'}
-                </dd>
-              </div>
-            </dl>
-          </div>
+          {/* 只對塔位顯示風水資訊 */}
+          {!['基本契約', '標準契約', '豪華契約', '定制契約'].includes(product.features.productType) && (
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h3 className="text-lg font-semibold mb-3">風水資訊</h3>
+              <dl className="space-y-2">
+                <div className="grid grid-cols-3">
+                  <dt className="text-gray-600">方位：</dt>
+                  <dd className="col-span-2 font-medium">
+                    {product.features.feng_shui.orientation || '未提供'}
+                  </dd>
+                </div>
+                <div className="grid grid-cols-3">
+                  <dt className="text-gray-600">環境：</dt>
+                  <dd className="col-span-2 font-medium">
+                    {product.features.feng_shui.environment.length > 0 
+                      ? product.features.feng_shui.environment.join('、') 
+                      : '未提供'}
+                  </dd>
+                </div>
+              </dl>
+            </div>
+          )}
         </div>
       </div>
 
