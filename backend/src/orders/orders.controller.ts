@@ -105,7 +105,7 @@ export class OrdersController {
       id: order.id || order._id?.toString(),
       orderNumber: order.orderNumber,
       status: order.status,
-      finalPrice: order.finalPrice,
+      finalPrice: order.estimatedPrice,
       transactionType: order.transactionType,
       buyer: order.buyerId,
       seller: order.sellerId,

@@ -37,6 +37,8 @@ export interface FengShui {
 // 商品特點
 export interface ProductFeatures {
   productType: string;
+  /** @deprecated 使用productType代替 */
+  type?: string;
   size: string;
   facing: string;
   floor: number;

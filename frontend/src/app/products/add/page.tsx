@@ -38,6 +38,7 @@ export default function AddProductPage() {
     },
     features: {
       type: '',
+      productType: '',
       size: '',
       facing: '',
       floor: 0,

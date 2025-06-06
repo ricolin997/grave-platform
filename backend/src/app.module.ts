@@ -6,7 +6,7 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { ProductsModule } from './products/products.module';
-import { OrdersModule } from './orders/orders.module';
+import { InquiryModule } from './orders/inquiry.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { FavoritesModule } from './favorites/favorites.module';
 import { MessagesModule } from './messages/messages.module';
@@ -16,11 +16,13 @@ import { MessagesModule } from './messages/messages.module';
     ConfigModule.forRoot({
       isGlobal: true,
     }),
-    MongooseModule.forRoot(process.env.MONGODB_URI || 'mongodb://localhost:27017/grave-platform'),
+    MongooseModule.forRoot(
+      process.env.MONGODB_URI || 'mongodb://localhost:27017/grave-platform',
+    ),
     AuthModule,
     UsersModule,
     ProductsModule,
-    OrdersModule,
+    InquiryModule,
     NotificationsModule,
     FavoritesModule,
     MessagesModule,

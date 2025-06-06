@@ -1,9 +1,21 @@
+export enum InquiryStatus {
+  PENDING = 'pending',
+  CONTACTED = 'contacted',
+  VISIT_SCHEDULED = 'visit_scheduled',
+  VISIT_COMPLETED = 'visit_completed',
+  INTERESTED = 'interested',
+  COMPLETED = 'completed',
+  CANCELLED = 'cancelled',
+  REJECTED = 'rejected',
+}
+
+// 保留舊枚舉以兼容現有代碼
 export enum OrderStatus {
-  PENDING = 'pending',           // 等待賣家確認
-  CONFIRMED = 'confirmed',       // 賣家已確認，等待買家轉帳
-  PAYMENT_PENDING = 'payment_pending',   // 等待賣家確認收款
-  PAYMENT_CONFIRMED = 'payment_confirmed', // 賣家已確認收款
-  COMPLETED = 'completed',       // 交易完成
-  CANCELLED = 'cancelled',       // 交易取消
-  REJECTED = 'rejected'          // 賣家拒絕
+  PENDING = 'pending',
+  CONFIRMED = 'confirmed',
+  PAYMENT_PENDING = 'payment_pending',
+  PAYMENT_CONFIRMED = 'payment_confirmed',
+  COMPLETED = 'completed',
+  CANCELLED = 'cancelled',
+  REJECTED = 'rejected',
 } 

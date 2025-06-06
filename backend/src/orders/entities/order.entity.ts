@@ -1,9 +1,10 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
-import { OrderStatus } from '../enums/order-status.enum';
-import { TransactionType } from '../enums/transaction-type.enum';
+import { OrderStatus, InquiryStatus } from '../enums/order-status.enum';
+import { TransactionType, ContactPreference } from '../enums/transaction-type.enum';
 
 export type OrderDocument = Order & Document;
+export type InquiryDocument = Order & Document;
 
 export type TransferInfo = {
   bankName: string;
@@ -43,10 +44,13 @@ export class Order {
   productId: Types.ObjectId;
 
   @Prop({ required: true })
-  finalPrice: number;
+  estimatedPrice: number;
 
-  @Prop({ required: true, enum: TransactionType })
+  @Prop({ required: false, enum: TransactionType })
   transactionType: TransactionType;
+
+  @Prop({ required: false, enum: ContactPreference })
+  contactPreference?: ContactPreference;
 
   @Prop()
   transferInstructions?: string;
@@ -79,6 +83,7 @@ export class Order {
 }
 
 export const OrderSchema = SchemaFactory.createForClass(Order);
+export const InquirySchema = OrderSchema;
 
 // 添加 id 虛擬屬性
 OrderSchema.virtual('id').get(function () {
