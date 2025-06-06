@@ -80,6 +80,17 @@ export interface ProductMetadata {
   soldAt?: Date;
 }
 
+// 商品狀態
+export type ProductStatus = 
+  | 'draft'        // 草稿，尚未發佈
+  | 'published'    // 已發佈，可被搜索
+  | 'reserved'     // 已預訂，有人有意向購買
+  | 'negotiating'  // 洽談中，買家與賣家正在協商
+  | 'inspecting'   // 實地查看中
+  | 'completed'    // 已完成媒合，但未下架
+  | 'sold'         // 已售出/已完成，不再顯示
+  | 'deleted';     // 已刪除
+
 // 完整商品信息
 export interface Product {
   id: string;
@@ -90,7 +101,7 @@ export interface Product {
   features: ProductFeatures;
   legalInfo: LegalInfo;
   verification: Verification;
-  status: 'draft' | 'published' | 'reserved' | 'sold' | 'deleted';
+  status: ProductStatus;
   statistics: ProductStatistics;
   metadata: ProductMetadata;
   isFavorited?: boolean;
@@ -105,11 +116,13 @@ export interface CreateProductData {
   verification: {
     documents: string[];
   };
-  status: 'draft' | 'published' | 'reserved' | 'sold';
+  status: ProductStatus;
 }
 
 // 更新商品用的數據
-export interface UpdateProductData extends Partial<CreateProductData> {}
+export interface UpdateProductData extends Partial<CreateProductData> {
+  updatedAt?: Date;
+}
 
 // 查詢商品用的參數
 export interface ProductQuery {
