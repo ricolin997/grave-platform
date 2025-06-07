@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
-import { Product } from '@/lib/types/product';
+import { Product, ProductStatus } from '@/lib/types/product';
 import { productsApi } from '@/lib/api/products';
 import { useAuth } from '@/lib/contexts/AuthContext';
 
@@ -13,6 +13,18 @@ interface ProductCardProps {
   onFavoriteChange?: (productId: string, isFavorite: boolean) => void;
 }
 
+// 產品狀態對應的標籤設定
+const statusConfig: Record<ProductStatus, { bg: string, text: string, label: string }> = {
+  published: { bg: 'bg-green-100', text: 'text-green-800', label: '銷售中' },
+  draft: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: '草稿' },
+  reserved: { bg: 'bg-blue-100', text: 'text-blue-800', label: '已預訂' },
+  negotiating: { bg: 'bg-purple-100', text: 'text-purple-800', label: '洽談中' },
+  inspecting: { bg: 'bg-indigo-100', text: 'text-indigo-800', label: '實地查看中' },
+  completed: { bg: 'bg-teal-100', text: 'text-teal-800', label: '已完成媒合' },
+  sold: { bg: 'bg-gray-100', text: 'text-gray-800', label: '已售出' },
+  deleted: { bg: 'bg-red-100', text: 'text-red-800', label: '已刪除' }
+};
+
 export default function ProductCard({ 
   product, 
   showFavoriteButton = true,
@@ -21,6 +33,7 @@ export default function ProductCard({
   const { user } = useAuth();
   const [isFavorite, setIsFavorite] = useState(product.isFavorited || false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
   
   // 在組件掛載時檢查收藏狀態
   useEffect(() => {
@@ -50,6 +63,11 @@ export default function ProductCard({
   const coverImage = product.basicInfo.images.length > 0
     ? product.basicInfo.images[0]
     : '/images/placeholder.jpg';
+
+  // 第二張圖片（如果有）用於懸停效果
+  const secondImage = product.basicInfo.images.length > 1
+    ? product.basicInfo.images[1]
+    : coverImage;
   
   // 格式化價格
   const formatPrice = (price: number) => {
@@ -108,43 +126,64 @@ export default function ProductCard({
     }
   };
 
+  // 取得狀態配置
+  const getStatusConfig = (status: ProductStatus) => {
+    return statusConfig[status] || statusConfig.published;
+  };
+
+  const config = getStatusConfig(product.status);
+
   return (
-    <div className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300 relative">
+    <div 
+      className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300 relative group"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
       <Link href={`/products/${product.id}`} className="block">
-        <div className="relative h-48 w-full">
+        <div className="relative h-48 w-full overflow-hidden">
+          {/* 主圖與懸停切換效果 */}
           <Image
             src={coverImage}
             alt={product.basicInfo.title}
             fill
-            className="object-cover"
+            className={`object-cover transition-opacity duration-300 ${isHovered ? 'opacity-0' : 'opacity-100'}`}
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+          />
+
+          {/* 懸停時顯示的第二張圖 */}
+          <Image
+            src={secondImage}
+            alt={`${product.basicInfo.title} - 第二張圖`}
+            fill
+            className={`object-cover transition-opacity duration-300 ${isHovered ? 'opacity-100' : 'opacity-0'}`}
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           />
           
           {/* 狀態標籤 */}
           {product.status !== 'published' && (
-            <div className={`absolute top-2 left-2 px-2 py-1 text-xs font-semibold rounded ${
-              product.status === 'reserved' ? 'bg-blue-100 text-blue-800' :
-              product.status === 'sold' ? 'bg-gray-100 text-gray-800' :
-              product.status === 'draft' ? 'bg-yellow-100 text-yellow-800' :
-              'bg-red-100 text-red-800'
-            }`}>
-              {product.status === 'reserved' ? '已預訂' :
-               product.status === 'sold' ? '已售出' :
-               product.status === 'draft' ? '草稿' :
-               '未知'}
+            <div className={`absolute top-2 left-2 px-2 py-1 text-xs font-semibold rounded ${config.bg} ${config.text} z-10`}>
+              {config.label}
             </div>
           )}
           
           {/* 時間標籤 */}
-          <div className="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded-full">
+          <div className="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded-full z-10">
             {getPublishedTime()}
           </div>
+          
+          {/* 可議價標籤 */}
+          {product.basicInfo.negotiable && (
+            <div className="absolute bottom-2 right-2 bg-yellow-500/80 text-white text-xs px-2 py-1 rounded-full z-10">
+              可議價
+            </div>
+          )}
           
           {/* 收藏按鈕 */}
           {user && showFavoriteButton && (
             <button
               onClick={toggleFavorite}
               disabled={isLoading}
-              className="absolute top-2 right-2 bg-white/80 p-2 rounded-full shadow-md hover:bg-white"
+              className="absolute top-2 right-2 bg-white/80 p-2 rounded-full shadow-md hover:bg-white z-10"
               aria-label={isFavorite ? '取消收藏' : '收藏'}
             >
               {isLoading ? (
@@ -181,7 +220,7 @@ export default function ProductCard({
               {formatPrice(product.basicInfo.price)}
             </span>
             {product.basicInfo.negotiable && (
-              <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+              <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">
                 可議價
               </span>
             )}
@@ -198,10 +237,10 @@ export default function ProductCard({
             </div>
           </div>
           
-          <div className="flex items-center justify-between text-xs text-gray-500">
+          <div className="flex items-center justify-between text-xs text-gray-500 mt-3">
             <div className="flex items-center space-x-2">
-              <span className="bg-gray-100 px-2 py-1 rounded-full">{product.features.productType}</span>
-              <span className="bg-gray-100 px-2 py-1 rounded-full">{product.features.religion}</span>
+              <span className="bg-gray-100 px-2 py-1 rounded-full truncate max-w-[100px]">{product.features.productType}</span>
+              <span className="bg-gray-100 px-2 py-1 rounded-full truncate max-w-[70px]">{product.features.religion}</span>
             </div>
             
             <div className="flex items-center space-x-2">
@@ -219,6 +258,11 @@ export default function ProductCard({
                 {product.statistics?.favorites || 0}
               </span>
             </div>
+          </div>
+          
+          {/* 快速操作懸停顯示 */}
+          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-indigo-600 to-indigo-500 text-white py-3 text-center font-medium transform translate-y-full group-hover:translate-y-0 transition-transform duration-300">
+            查看詳情
           </div>
         </div>
       </Link>

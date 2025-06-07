@@ -259,43 +259,44 @@ export default function ProductsPage() {
         {/* 右側商品列表 */}
         <div className="lg:col-span-3">
           {/* 排序和過濾條件 */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 bg-white p-4 rounded-lg shadow-sm">
             <div className="mb-4 sm:mb-0">
               <h2 className="text-lg font-semibold">{getResultDescription()}</h2>
+              <p className="text-sm text-gray-500">依以下條件排序</p>
             </div>
             
-            <div className="flex items-center">
-              <label htmlFor="sort" className="mr-2 text-sm text-gray-600">排序方式:</label>
-              <select
-                id="sort"
-                className="border rounded p-2 text-sm"
-                value={sort}
-                onChange={(e) => {
-                  const params = new URLSearchParams(searchParams.toString());
-                  params.set('sort', e.target.value);
-                  window.location.href = '/products?' + params.toString();
-                }}
-              >
-                {Object.entries(sortLabels).map(([value, label]) => (
-                  <option key={value} value={value}>{label}</option>
-                ))}
-              </select>
+            <div className="flex items-center bg-gray-50 rounded-md p-1 border border-gray-200">
+              {Object.entries(sortLabels).map(([value, label]) => (
+                <button
+                  key={value}
+                  className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                    sort === value ? 'bg-white text-indigo-600 shadow-sm font-medium' : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                  onClick={() => {
+                    const params = new URLSearchParams(searchParams.toString());
+                    params.set('sort', value);
+                    window.location.href = '/products?' + params.toString();
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
           </div>
           
           {/* 活躍過濾條件標籤 */}
           {getActiveFilters().length > 0 && (
-            <div className="flex flex-wrap items-center gap-2 mb-6">
-              <span className="text-sm text-gray-600">已選條件:</span>
+            <div className="flex flex-wrap items-center gap-2 mb-6 bg-gray-50 p-3 rounded-lg border border-gray-100">
+              <span className="text-sm font-medium text-gray-700">已選條件:</span>
               
               {getActiveFilters().map((filter) => (
                 <Link
                   key={`${filter.key}-${filter.value}`}
                   href={removeFilter(filter.key)}
-                  className="inline-flex items-center bg-gray-100 px-3 py-1 rounded-full text-sm text-gray-700 hover:bg-gray-200"
+                  className="inline-flex items-center bg-white px-3 py-1.5 rounded-full text-sm text-gray-700 hover:bg-gray-100 border border-gray-200 shadow-sm transition-all hover:shadow"
                 >
                   {filter.label}
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1.5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </Link>
@@ -303,8 +304,11 @@ export default function ProductsPage() {
               
               <Link
                 href={clearAllFilters()}
-                className="inline-flex items-center text-indigo-600 hover:text-indigo-800 text-sm"
+                className="inline-flex items-center text-indigo-600 hover:text-indigo-800 text-sm font-medium ml-auto bg-indigo-50 px-3 py-1.5 rounded-full hover:bg-indigo-100 transition-colors"
               >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
                 清除全部
               </Link>
             </div>
@@ -323,13 +327,19 @@ export default function ProductsPage() {
               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
             </div>
           ) : products.length === 0 ? (
-            <div className="bg-gray-50 border border-gray-200 p-8 rounded-lg text-center">
+            <div className="bg-white border border-gray-200 p-8 rounded-lg text-center shadow-sm">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
               <h3 className="text-lg font-semibold mb-2">未找到符合條件的商品</h3>
               <p className="text-gray-600 mb-4">請嘗試調整搜索條件或查看所有商品</p>
               <Link
                 href="/products"
-                className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"
+                className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 inline-flex items-center"
               >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
+                </svg>
                 查看所有商品
               </Link>
             </div>
@@ -369,7 +379,7 @@ export default function ProductsPage() {
               {products.length > 12 && (
                 <button
                   onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                  className="fixed bottom-8 right-8 bg-indigo-600 text-white p-3 rounded-full shadow-lg hover:bg-indigo-700 transition-colors z-10"
+                  className="fixed bottom-8 right-8 bg-indigo-600 text-white p-3 rounded-full shadow-lg hover:bg-indigo-700 transition-colors z-10 animate-bounce"
                   aria-label="返回頂部"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">

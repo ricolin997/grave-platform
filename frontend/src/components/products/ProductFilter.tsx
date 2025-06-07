@@ -26,6 +26,8 @@ const cityOptions = [
   { value: '花蓮縣', label: '花蓮縣' },
   { value: '台東縣', label: '台東縣' },
   { value: '澎湖縣', label: '澎湖縣' },
+  { value: '金門縣', label: '金門縣' },
+  { value: '連江縣', label: '連江縣' },
 ];
 
 const religionOptions = [
@@ -34,7 +36,10 @@ const religionOptions = [
   { value: '道教', label: '道教' },
   { value: '基督教', label: '基督教' },
   { value: '天主教', label: '天主教' },
+  { value: '伊斯蘭教', label: '伊斯蘭教' },
+  { value: '無宗教限制', label: '無宗教限制' },
   { value: '一般', label: '一般' },
+  { value: '其他', label: '其他' },
 ];
 
 const typeOptions = [
@@ -42,6 +47,8 @@ const typeOptions = [
   { value: '單人塔位', label: '單人塔位' },
   { value: '雙人塔位', label: '雙人塔位' },
   { value: '家族塔位', label: '家族塔位' },
+  { value: '家庭塔位', label: '家庭塔位' },
+  { value: '骨灰罐位', label: '骨灰罐位' },
   { value: 'VIP塔位', label: 'VIP塔位' },
   { value: '基本契約', label: '基本契約' },
   { value: '標準契約', label: '標準契約' },
@@ -79,6 +86,16 @@ const surroundingOptions = [
   { value: 'transportation', label: '交通便利' },
 ];
 
+// 狀態選項
+const statusOptions = [
+  { value: '', label: '所有狀態' },
+  { value: 'published', label: '銷售中' },
+  { value: 'negotiating', label: '洽談中' },
+  { value: 'inspecting', label: '實地查看中' },
+  { value: 'reserved', label: '已預訂' },
+  { value: 'completed', label: '已完成媒合' },
+];
+
 const sortOptions = [
   { value: 'latest', label: '最新上架' },
   { value: 'price_asc', label: '價格由低到高' },
@@ -87,10 +104,23 @@ const sortOptions = [
   { value: 'favorites', label: '收藏人數' },
 ];
 
+// 價格範圍選項
+const priceRanges = [
+  { min: 0, max: 100000, label: '10萬以下' },
+  { min: 100000, max: 300000, label: '10-30萬' },
+  { min: 300000, max: 500000, label: '30-50萬' },
+  { min: 500000, max: 1000000, label: '50-100萬' },
+  { min: 1000000, max: 3000000, label: '100-300萬' },
+  { min: 3000000, max: 5000000, label: '300-500萬' },
+  { min: 5000000, max: 10000000, label: '500-1000萬' },
+  { min: 10000000, max: null, label: '1000萬以上' },
+];
+
 export default function ProductFilter() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
+  const [isPriceRangeOpen, setIsPriceRangeOpen] = useState(false);
   
   // 從 URL 參數獲取初始值
   const [filters, setFilters] = useState({
@@ -108,6 +138,8 @@ export default function ProductFilter() {
     transportation: searchParams.get('transportation') === 'true',
     sort: searchParams.get('sort') || 'latest',
     keyword: searchParams.get('keyword') || '',
+    status: searchParams.get('status') || '',
+    negotiable: searchParams.get('negotiable') === 'true',
   });
 
   useEffect(() => {
@@ -118,9 +150,15 @@ export default function ProductFilter() {
       !!searchParams.get('parking') || 
       !!searchParams.get('temple') || 
       !!searchParams.get('restaurant') || 
-      !!searchParams.get('transportation');
+      !!searchParams.get('transportation') ||
+      !!searchParams.get('negotiable') ||
+      !!searchParams.get('status');
     
     setIsAdvancedOpen(hasAdvancedFilters);
+    
+    // 檢查是否有價格過濾條件
+    const hasPriceFilters = !!searchParams.get('minPrice') || !!searchParams.get('maxPrice');
+    setIsPriceRangeOpen(hasPriceFilters);
   }, [searchParams]);
 
   // 處理輸入變更
@@ -133,6 +171,15 @@ export default function ProductFilter() {
     } else {
       setFilters(prev => ({ ...prev, [name]: value }));
     }
+  };
+
+  // 設置預設價格範圍
+  const handlePriceRangeSelect = (min: number | null, max: number | null) => {
+    setFilters(prev => ({
+      ...prev,
+      minPrice: min !== null ? min.toString() : '',
+      maxPrice: max !== null ? max.toString() : '',
+    }));
   };
 
   // 應用過濾器
@@ -170,6 +217,8 @@ export default function ProductFilter() {
       transportation: false,
       sort: 'latest',
       keyword: '',
+      status: '',
+      negotiable: false,
     });
     router.push('/products');
   };
@@ -186,7 +235,7 @@ export default function ProductFilter() {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow">
+    <div className="bg-white rounded-lg shadow sticky top-20">
       <div className="p-6 border-b">
         <h2 className="text-xl font-semibold mb-4">搜尋過濾</h2>
         
@@ -207,6 +256,7 @@ export default function ProductFilter() {
             <button
               onClick={applyFilters}
               className="bg-indigo-600 text-white px-4 py-2 rounded-r-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+              aria-label="搜索"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
@@ -308,34 +358,76 @@ export default function ProductFilter() {
           </div>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              最低價格
-            </label>
-            <input
-              type="number"
-              name="minPrice"
-              value={filters.minPrice}
-              onChange={handleChange}
-              placeholder="最低價格"
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-            />
-          </div>
+        {/* 價格範圍 */}
+        <div className="mb-6">
+          <button 
+            type="button" 
+            className="flex items-center text-indigo-600 hover:text-indigo-800 focus:outline-none mb-2"
+            onClick={() => setIsPriceRangeOpen(!isPriceRangeOpen)}
+          >
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              className={`h-5 w-5 mr-1 transition-transform ${isPriceRangeOpen ? 'rotate-180' : ''}`} 
+              viewBox="0 0 20 20" 
+              fill="currentColor"
+            >
+              <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
+            價格範圍
+          </button>
           
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              最高價格
-            </label>
-            <input
-              type="number"
-              name="maxPrice"
-              value={filters.maxPrice}
-              onChange={handleChange}
-              placeholder="最高價格"
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-            />
-          </div>
+          {isPriceRangeOpen && (
+            <div className="mt-2 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    最低價格
+                  </label>
+                  <input
+                    type="number"
+                    name="minPrice"
+                    value={filters.minPrice}
+                    onChange={handleChange}
+                    placeholder="最低價格"
+                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    最高價格
+                  </label>
+                  <input
+                    type="number"
+                    name="maxPrice"
+                    value={filters.maxPrice}
+                    onChange={handleChange}
+                    placeholder="最高價格"
+                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  />
+                </div>
+              </div>
+
+              {/* 預設價格範圍選項 */}
+              <div className="mt-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  快速選擇價格範圍
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {priceRanges.map((range, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => handlePriceRangeSelect(range.min, range.max)}
+                      className="text-sm py-1 px-2 border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    >
+                      {range.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
         
         {/* 進階過濾選項 */}
@@ -394,6 +486,39 @@ export default function ProductFilter() {
                     ))}
                   </select>
                 </div>
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  商品狀態
+                </label>
+                <select
+                  name="status"
+                  value={filters.status}
+                  onChange={handleChange}
+                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                >
+                  {statusOptions.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className="mb-4">
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    name="negotiable"
+                    checked={filters.negotiable}
+                    onChange={handleChange}
+                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                  />
+                  <span className="ml-2 text-sm text-gray-700">
+                    僅顯示可議價商品
+                  </span>
+                </label>
               </div>
               
               <div className="mb-4">
