@@ -135,7 +135,7 @@ export default function SellerAddProductPage() {
   };
 
   // 處理表單提交
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent, submitStatus: 'draft' | 'pending') => {
     e.preventDefault();
     
     try {
@@ -264,7 +264,7 @@ export default function SellerAddProductPage() {
         verification: {
           documents: formData.verification!.documents || [],
         },
-        status: formData.status || 'draft',
+        status: submitStatus,
       };
       
       // 檢查 features 中的字段，確保它們都是字符串而不是物件
@@ -541,7 +541,7 @@ export default function SellerAddProductPage() {
         </div>
       )}
       
-      <form onSubmit={handleSubmit} className="space-y-8">
+      <form onSubmit={(e) => handleSubmit(e, 'pending')} className="space-y-8">
         {/* 基本信息 */}
         <div className="bg-white p-6 rounded-lg shadow-md">
           <h2 className="text-xl font-semibold mb-4">基本信息</h2>
@@ -1181,15 +1181,7 @@ export default function SellerAddProductPage() {
           <div className="grid grid-cols-2 gap-4 mb-6">
             <button
               type="button"
-              onClick={(e) => {
-                // 設置狀態為草稿
-                setFormData(prev => ({
-                  ...prev,
-                  status: 'draft'
-                }));
-                // 提交表單
-                handleSubmit(e);
-              }}
+              onClick={(e) => handleSubmit(e, 'draft')}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm bg-white text-gray-700 hover:bg-gray-50 flex items-center justify-center"
               disabled={loading}
             >
@@ -1212,15 +1204,7 @@ export default function SellerAddProductPage() {
             </button>
             <button
               type="button" 
-              onClick={(e) => {
-                // 設置狀態為待審核
-                setFormData(prev => ({
-                  ...prev,
-                  status: 'pending'
-                }));
-                // 提交表單
-                handleSubmit(e);
-              }}
+              onClick={(e) => handleSubmit(e, 'pending')}
               className="w-full px-4 py-3 border border-transparent rounded-lg shadow-sm bg-indigo-600 text-white hover:bg-indigo-700 flex items-center justify-center"
               disabled={loading}
             >

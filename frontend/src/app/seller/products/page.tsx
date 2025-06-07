@@ -408,13 +408,13 @@ export default function SellerProductsPage() {
                       <div className="flex flex-col space-y-2">
                         <div className="flex space-x-2">
                           <Link
-                            href={`/products/${product.id}`}
+                            href={`/seller/products/${product.id}`}
                             className="text-indigo-600 hover:text-indigo-900"
                           >
                             查看
                           </Link>
                           <Link
-                            href={`/products/edit/${product.id}`}
+                            href={`/seller/products/edit/${product.id}`}
                             className="text-yellow-600 hover:text-yellow-900"
                           >
                             編輯
