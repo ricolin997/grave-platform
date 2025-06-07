@@ -171,7 +171,7 @@ export default function SellerProductsPage() {
 
       {/* 狀態篩選 */}
       <div className="mb-6">
-        <div className="flex space-x-2 border-b pb-2">
+        <div className="flex space-x-2 border-b pb-2 overflow-x-auto">
           <button
             onClick={() => changeStatusFilter(undefined)}
             className={`px-4 py-2 rounded-t-lg ${
@@ -189,6 +189,16 @@ export default function SellerProductsPage() {
           >
             草稿
           </button>
+
+          <button
+            onClick={() => changeStatusFilter('pending')}
+            className={`px-4 py-2 rounded-t-lg ${
+              status === 'pending' ? 'bg-indigo-100 font-medium text-indigo-700' : 'hover:bg-gray-100'
+            }`}
+          >
+            待審核
+          </button>
+          
           <button
             onClick={() => changeStatusFilter('published')}
             className={`px-4 py-2 rounded-t-lg ${
@@ -197,6 +207,7 @@ export default function SellerProductsPage() {
           >
             已發佈
           </button>
+          
           <button
             onClick={() => changeStatusFilter('reserved')}
             className={`px-4 py-2 rounded-t-lg ${
@@ -205,6 +216,43 @@ export default function SellerProductsPage() {
           >
             已預訂
           </button>
+          
+          <button
+            onClick={() => changeStatusFilter('negotiating')}
+            className={`px-4 py-2 rounded-t-lg ${
+              status === 'negotiating' ? 'bg-indigo-100 font-medium text-indigo-700' : 'hover:bg-gray-100'
+            }`}
+          >
+            洽談中
+          </button>
+          
+          <button
+            onClick={() => changeStatusFilter('inspecting')}
+            className={`px-4 py-2 rounded-t-lg ${
+              status === 'inspecting' ? 'bg-indigo-100 font-medium text-indigo-700' : 'hover:bg-gray-100'
+            }`}
+          >
+            實地查看中
+          </button>
+          
+          <button
+            onClick={() => changeStatusFilter('completed')}
+            className={`px-4 py-2 rounded-t-lg ${
+              status === 'completed' ? 'bg-indigo-100 font-medium text-indigo-700' : 'hover:bg-gray-100'
+            }`}
+          >
+            已完成媒合
+          </button>
+          
+          <button
+            onClick={() => changeStatusFilter('rejected')}
+            className={`px-4 py-2 rounded-t-lg ${
+              status === 'rejected' ? 'bg-indigo-100 font-medium text-indigo-700' : 'hover:bg-gray-100'
+            }`}
+          >
+            審核被拒
+          </button>
+          
           <button
             onClick={() => changeStatusFilter('sold')}
             className={`px-4 py-2 rounded-t-lg ${
@@ -314,7 +362,17 @@ export default function SellerProductsPage() {
                             ? 'bg-gray-100 text-gray-800'
                             : product.status === 'reserved'
                             ? 'bg-blue-100 text-blue-800'
-                            : 'bg-red-100 text-red-800'
+                            : product.status === 'pending'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : product.status === 'rejected'
+                            ? 'bg-red-100 text-red-800'
+                            : product.status === 'negotiating'
+                            ? 'bg-purple-100 text-purple-800'
+                            : product.status === 'inspecting'
+                            ? 'bg-indigo-100 text-indigo-800'
+                            : product.status === 'completed'
+                            ? 'bg-teal-100 text-teal-800'
+                            : 'bg-gray-100 text-gray-800'
                         }`}
                       >
                         {product.status === 'published'
@@ -325,6 +383,16 @@ export default function SellerProductsPage() {
                           ? '已售出'
                           : product.status === 'reserved'
                           ? '已預訂'
+                          : product.status === 'pending'
+                          ? '待審核'
+                          : product.status === 'rejected'
+                          ? '審核被拒'
+                          : product.status === 'negotiating'
+                          ? '洽談中'
+                          : product.status === 'inspecting'
+                          ? '實地查看中'
+                          : product.status === 'completed'
+                          ? '已完成媒合'
                           : '未知'}
                       </span>
                     </td>

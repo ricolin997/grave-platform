@@ -57,8 +57,12 @@ export default function LoginPage() {
       // 使用 AuthContext 的 login 函數更新身份驗證狀態
       login(response.user);
       
-      // 登入成功後跳轉到首頁
-      router.push('/');
+      // 根據用戶角色選擇跳轉頁面
+      if (response.user.role === 'admin') {
+        router.push('/admin');
+      } else {
+        router.push('/');
+      }
     } catch (err: any) {
       console.error('登入失敗:', err);
       setError(err.response?.data?.message || '登入失敗，請檢查您的憑證');

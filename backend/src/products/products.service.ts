@@ -125,18 +125,18 @@ export class ProductsService {
         },
         legalInfo: createProductDto.legalInfo,
         verification: createProductDto.verification,
-        status: createProductDto.status,
+        status: createProductDto.status === 'published' ? 'pending' : createProductDto.status,
         metadata: {
           createdAt: new Date(),
           updatedAt: new Date(),
         },
       });
 
-      // 如果狀態是已發佈，設置發佈時間
-      if (product.status === 'published') {
-        console.log('設置發佈時間');
-        product.metadata.publishedAt = new Date();
-      }
+      // 如果狀態是已發佈，設置發佈時間（現在改為待審核，所以這個邏輯需要移除）
+      // if (product.status === 'published') {
+      //   console.log('設置發佈時間');
+      //   product.metadata.publishedAt = new Date();
+      // }
 
       console.log('開始保存商品');
       // 保存商品
@@ -329,7 +329,10 @@ export class ProductsService {
         if (!product.metadata) {
           product.metadata = {};
         }
-        product.metadata.publishedAt = new Date();
+        // 將狀態從 "published" 改為 "pending"（待審核）
+        updateProductDto.status = 'pending';
+        console.log('產品從草稿更新為待審核狀態');
+        // 不再設置發佈時間，因為需要等待審核通過
       }
 
       // 更新產品屬性

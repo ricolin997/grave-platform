@@ -122,7 +122,7 @@ export class Product {
     type: {
       status: { 
         type: String, 
-        enum: ['pending', 'verified', 'rejected'], 
+        enum: ['pending', 'verified', 'rejected', 'needs_info'], 
         default: 'pending',
       },
       documents: { type: [String], default: [] },
@@ -136,7 +136,7 @@ export class Product {
     _id: false,
   })
   verification: {
-    status: 'pending' | 'verified' | 'rejected';
+    status: 'pending' | 'verified' | 'rejected' | 'needs_info';
     documents: string[];
     verifiedAt?: Date;
     verifier?: MongooseSchema.Types.ObjectId;
@@ -145,10 +145,10 @@ export class Product {
 
   @Prop({
     type: String,
-    enum: ['draft', 'published', 'reserved', 'sold', 'deleted'],
+    enum: ['draft', 'pending', 'published', 'reserved', 'negotiating', 'inspecting', 'completed', 'rejected', 'sold', 'deleted'],
     default: 'draft',
   })
-  status: 'draft' | 'published' | 'reserved' | 'sold' | 'deleted';
+  status: 'draft' | 'pending' | 'published' | 'reserved' | 'negotiating' | 'inspecting' | 'completed' | 'rejected' | 'sold' | 'deleted';
 
   @Prop({
     type: {

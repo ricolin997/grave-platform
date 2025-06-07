@@ -194,6 +194,6 @@ export class CreateProductDto {
   @Type(() => VerificationDto)
   verification: VerificationDto;
 
-  @IsEnum(['draft', 'published', 'reserved', 'sold'], { message: '狀態必須是draft、published、reserved或sold' })
-  status: 'draft' | 'published' | 'reserved' | 'sold';
+  @IsEnum(['draft', 'pending', 'published', 'reserved', 'sold'], { message: '狀態必須是draft、pending、published、reserved或sold' })
+  status: 'draft' | 'pending' | 'published' | 'reserved' | 'sold';
 } 
