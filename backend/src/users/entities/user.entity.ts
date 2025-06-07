@@ -7,10 +7,12 @@ export type UserDocument = User & Document & {
   _id: any;
 };
 
+export type UserRole = 'buyer' | 'seller' | 'admin';
+
 @Schema({ timestamps: true })
 export class User {
-  @Prop({ required: true, enum: ['buyer', 'seller'] })
-  role: 'buyer' | 'seller';
+  @Prop({ required: true, enum: ['buyer', 'seller', 'admin'] })
+  role: UserRole;
 
   @Prop({ required: true, unique: true })
   email: string;
@@ -122,6 +124,28 @@ export class User {
   })
   metadata: {
     status: 'active' | 'suspended';
+  };
+
+  @Prop({
+    type: {
+      canReviewProducts: { type: Boolean, default: false },
+      canManageUsers: { type: Boolean, default: false },
+      canViewStatistics: { type: Boolean, default: false },
+      canManageSettings: { type: Boolean, default: false },
+    },
+    default: () => ({
+      canReviewProducts: false,
+      canManageUsers: false,
+      canViewStatistics: false,
+      canManageSettings: false,
+    }),
+    _id: false,
+  })
+  permissions?: {
+    canReviewProducts: boolean;
+    canManageUsers: boolean;
+    canViewStatistics: boolean;
+    canManageSettings: boolean;
   };
 }
 

@@ -56,11 +56,21 @@ export interface LegalInfo {
   restrictions: string[];
 }
 
+// 驗證狀態
+export type VerificationStatus = 
+  | 'pending'    // 等待審核中
+  | 'verified'   // 已通過驗證
+  | 'rejected'   // 已被拒絕
+  | 'needs_info' // 需要更多信息
+
 // 驗證信息
 export interface Verification {
-  status: 'pending' | 'verified' | 'rejected';
+  status: VerificationStatus;
   documents: string[];
   verifiedAt?: Date;
+  reviewedBy?: string;  // 審核者ID
+  reviewNote?: string;  // 審核備註
+  rejectionReason?: string; // 拒絕原因
 }
 
 // 商品統計
@@ -78,18 +88,33 @@ export interface ProductMetadata {
   updatedAt: Date;
   publishedAt?: Date;
   soldAt?: Date;
+  reviewedAt?: Date; // 審核時間
 }
 
 // 商品狀態
 export type ProductStatus = 
   | 'draft'        // 草稿，尚未發佈
+  | 'pending'      // 等待審核
   | 'published'    // 已發佈，可被搜索
   | 'reserved'     // 已預訂，有人有意向購買
   | 'negotiating'  // 洽談中，買家與賣家正在協商
   | 'inspecting'   // 實地查看中
   | 'completed'    // 已完成媒合，但未下架
+  | 'rejected'     // 審核被拒絕
   | 'sold'         // 已售出/已完成，不再顯示
   | 'deleted';     // 已刪除
+
+// 審核歷史記錄
+export interface ReviewHistory {
+  id: string;
+  productId: string;
+  adminId: string;
+  adminName: string;
+  fromStatus: ProductStatus;
+  toStatus: ProductStatus;
+  comment: string;
+  timestamp: Date;
+}
 
 // 完整商品信息
 export interface Product {
@@ -105,6 +130,7 @@ export interface Product {
   statistics: ProductStatistics;
   metadata: ProductMetadata;
   isFavorited?: boolean;
+  reviewHistory?: ReviewHistory[];
 }
 
 // 創建商品用的數據
@@ -124,6 +150,17 @@ export interface UpdateProductData extends Partial<CreateProductData> {
   updatedAt?: Date;
 }
 
+// 商品審核數據
+export interface ProductReviewData {
+  status: ProductStatus;
+  verification: {
+    status: VerificationStatus;
+    reviewNote?: string;
+    rejectionReason?: string;
+  };
+  reviewedBy: string;
+}
+
 // 查詢商品用的參數
 export interface ProductQuery {
   city?: string;
@@ -132,7 +169,8 @@ export interface ProductQuery {
   minPrice?: number;
   maxPrice?: number;
   type?: string;
-  status?: string;
+  status?: string | ProductStatus;
+  verification?: string | VerificationStatus;
   page?: number;
   limit?: number;
 }

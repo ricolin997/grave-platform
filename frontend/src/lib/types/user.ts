@@ -1,6 +1,8 @@
+export type UserRole = 'buyer' | 'seller' | 'admin';
+
 export interface User {
   id: string;
-  role: 'buyer' | 'seller';
+  role: UserRole;
   email: string;
   profile: {
     name: string;
@@ -23,9 +25,16 @@ export interface User {
     views: number;
   };
   metadata: {
-    status: string;
+    status: 'active' | 'suspended' | 'deleted';
     createdAt: Date;
     updatedAt: Date;
+    lastLogin?: Date;
+  };
+  permissions?: {
+    canReviewProducts: boolean;
+    canManageUsers: boolean;
+    canViewStatistics: boolean;
+    canManageSettings: boolean;
   };
 }
 
@@ -47,6 +56,12 @@ export interface AuthResponse {
     email: string;
     role: string;
     name: string;
+    permissions?: {
+      canReviewProducts: boolean;
+      canManageUsers: boolean;
+      canViewStatistics: boolean;
+      canManageSettings: boolean;
+    };
   };
   accessToken: string;
 }
@@ -57,4 +72,64 @@ export interface CurrentUser {
   email: string;
   role: string;
   name: string;
+  permissions?: {
+    canReviewProducts: boolean;
+    canManageUsers: boolean;
+    canViewStatistics: boolean;
+    canManageSettings: boolean;
+  };
+}
+
+// 用戶管理相關類型
+export interface UserListItem {
+  id: string;
+  email: string;
+  role: UserRole;
+  name: string;
+  status: 'active' | 'suspended' | 'deleted';
+  createdAt: Date;
+  lastLogin?: Date;
+  statistics: {
+    listings: number;
+    matches: number;
+    views: number;
+  };
+}
+
+export interface UsersResponse {
+  users: UserListItem[];
+  total: number;
+  page: number;
+  totalPages: number;
+}
+
+export interface UserQuery {
+  role?: UserRole;
+  status?: 'active' | 'suspended' | 'deleted';
+  search?: string;
+  page?: number;
+  limit?: number;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}
+
+export interface UpdateUserData {
+  role?: UserRole;
+  email?: string;
+  profile?: {
+    name?: string;
+    phone?: string;
+    avatar?: string;
+    identityVerified?: boolean;
+    realNameVerified?: boolean;
+  };
+  metadata?: {
+    status?: 'active' | 'suspended' | 'deleted';
+  };
+  permissions?: {
+    canReviewProducts?: boolean;
+    canManageUsers?: boolean;
+    canViewStatistics?: boolean;
+    canManageSettings?: boolean;
+  };
 } 
