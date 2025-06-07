@@ -155,8 +155,8 @@ export default function EditProductPage() {
       // 提交表單
       await productsApi.updateProduct(params.id as string, updateData);
       
-      // 提交成功後跳轉到商品詳情頁
-      router.push(`/products/${params.id}`);
+      // 提交成功後跳轉到賣家商品列表頁
+      router.push('/seller/products');
       
     } catch (err: unknown) {
       console.error('更新商品失敗', err);
@@ -351,6 +351,7 @@ export default function EditProductPage() {
         </div>
         
         <button
+          type="button"
           onClick={() => router.push(`/products/${params.id}`)}
           className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
         >
@@ -856,7 +857,7 @@ export default function EditProductPage() {
           
           <button
             type="button"
-            onClick={() => router.push(`/products/${params.id}`)}
+            onClick={() => router.push(`/seller/products`)}
             className="px-6 py-3 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2"
           >
             取消
