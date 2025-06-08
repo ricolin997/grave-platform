@@ -118,7 +118,7 @@ export default function SellerDashboardPage() {
       {/* 快速操作入口 */}
       <h2 className="text-2xl font-bold mb-6">快速操作</h2>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-        <Link href="/products/create" className="block">
+        <Link href="/seller/products/new" className="block">
           <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-indigo-500 hover:shadow-lg transition-shadow">
             <h3 className="text-xl font-semibold text-gray-800 mb-2">發佈新商品</h3>
             <p className="text-gray-600">創建並發佈新的墓地產品到平台</p>

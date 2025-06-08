@@ -408,7 +408,7 @@ export default function SellerProductsPage() {
                       <div className="flex flex-col space-y-2">
                         <div className="flex space-x-2">
                           <Link
-                            href={`/seller/products/${product.id}`}
+                            href={`/products/${product.id}`}
                             className="text-indigo-600 hover:text-indigo-900"
                           >
                             查看
