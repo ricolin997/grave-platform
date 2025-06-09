@@ -3,12 +3,11 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { BookmarkPlus, BookmarkMinus, CalendarClock, Coins } from 'lucide-react';
 import { productsApi } from '@/lib/api/products';
 import { Product, ProductStatus, VerificationStatus } from '@/lib/types/product';
 
 export default function ProductReviewPage() {
-  const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -16,6 +15,24 @@ export default function ProductReviewPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalProducts, setTotalProducts] = useState(0);
   const [filterStatus, setFilterStatus] = useState<string>('pending');
+  const [sortBy, setSortBy] = useState<string>('createdAt');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [pendingCount, setPendingCount] = useState<number>(0);
+  const [showMarkedOnly, setShowMarkedOnly] = useState<boolean>(false);
+
+  // 載入待審核商品數量
+  useEffect(() => {
+    const fetchPendingCount = async () => {
+      try {
+        const count = await productsApi.getPendingProductsCount();
+        setPendingCount(count);
+      } catch (err) {
+        console.error('獲取待審核商品數量失敗', err);
+      }
+    };
+
+    fetchPendingCount();
+  }, []);
 
   // 載入待審核商品
   useEffect(() => {
@@ -26,6 +43,9 @@ export default function ProductReviewPage() {
         
         const response = await productsApi.getProducts({ 
           status: filterStatus as ProductStatus,
+          sortBy: sortBy,
+          sort: sortOrder,
+          marked: showMarkedOnly || undefined,
           page: currentPage,
           limit: 10
         });
@@ -42,7 +62,30 @@ export default function ProductReviewPage() {
     };
 
     fetchPendingProducts();
-  }, [currentPage, filterStatus]);
+  }, [currentPage, filterStatus, sortBy, sortOrder, showMarkedOnly]);
+
+  // 處理標記/取消標記
+  const handleToggleMark = async (productId: string, currentMarkedState: boolean) => {
+    try {
+      if (currentMarkedState) {
+        await productsApi.unmarkProduct(productId);
+      } else {
+        await productsApi.markProduct(productId);
+      }
+      
+      // 更新商品列表
+      setProducts(prevProducts => 
+        prevProducts.map(product => 
+          product.id === productId 
+            ? { ...product, isMarked: !currentMarkedState } 
+            : product
+        )
+      );
+    } catch (err) {
+      console.error('標記/取消標記商品失敗', err);
+      alert('操作失敗，請稍後再試');
+    }
+  };
 
   // 格式化時間
   const formatDate = (dateString: string) => {
@@ -54,6 +97,17 @@ export default function ProductReviewPage() {
       hour: '2-digit',
       minute: '2-digit'
     }).format(date);
+  };
+
+  // 處理排序
+  const handleSort = (field: string) => {
+    if (sortBy === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(field);
+      setSortOrder('desc');
+    }
+    setCurrentPage(1);
   };
 
   // 處理審核狀態變更
@@ -70,6 +124,9 @@ export default function ProductReviewPage() {
       
       // 更新總數
       setTotalProducts(prev => prev - 1);
+      if (filterStatus === 'pending') {
+        setPendingCount(prev => prev - 1);
+      }
     } catch (err) {
       console.error('批准商品失敗', err);
       alert('操作失敗，請稍後再試');
@@ -95,6 +152,9 @@ export default function ProductReviewPage() {
       
       // 更新總數
       setTotalProducts(prev => prev - 1);
+      if (filterStatus === 'pending') {
+        setPendingCount(prev => prev - 1);
+      }
     } catch (err) {
       console.error('拒絕商品失敗', err);
       alert('操作失敗，請稍後再試');
@@ -120,6 +180,9 @@ export default function ProductReviewPage() {
       
       // 更新總數
       setTotalProducts(prev => prev - 1);
+      if (filterStatus === 'pending') {
+        setPendingCount(prev => prev - 1);
+      }
     } catch (err) {
       console.error('請求更多信息失敗', err);
       alert('操作失敗，請稍後再試');
@@ -189,12 +252,32 @@ export default function ProductReviewPage() {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">商品審核管理</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            檢查並審核賣家提交的商品信息。
-          </p>
+          <div className="mt-1 flex items-center">
+            <p className="text-sm text-gray-500 mr-2">
+              檢查並審核賣家提交的商品信息。
+            </p>
+            {pendingCount > 0 && (
+              <span className="bg-yellow-100 text-yellow-800 text-xs font-medium px-2.5 py-0.5 rounded dark:bg-yellow-900 dark:text-yellow-300">
+                待審核: {pendingCount}
+              </span>
+            )}
+          </div>
         </div>
 
-        <div className="flex space-x-2">
+        <div className="flex items-center space-x-3">
+          <div className="flex items-center">
+            <input
+              id="markedOnly"
+              type="checkbox"
+              checked={showMarkedOnly}
+              onChange={(e) => setShowMarkedOnly(e.target.checked)}
+              className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+            />
+            <label htmlFor="markedOnly" className="ml-2 text-sm text-gray-700">
+              僅顯示已標記
+            </label>
+          </div>
+          
           <select
             value={filterStatus}
             onChange={(e) => {
@@ -206,6 +289,7 @@ export default function ProductReviewPage() {
             <option value="pending">待審核</option>
             <option value="published">已批准</option>
             <option value="rejected">已拒絕</option>
+            <option value="needs_info">待補充</option>
           </select>
         </div>
       </div>
@@ -244,16 +328,47 @@ export default function ProductReviewPage() {
               <thead className="bg-gray-50">
                 <tr>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <div className="flex items-center">
+                      標記
+                    </div>
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     商品
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     賣家
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    價格
+                    <button 
+                      className="flex items-center focus:outline-none"
+                      onClick={() => handleSort('price')}
+                    >
+                      價格
+                      <Coins 
+                        className={`h-4 w-4 ml-1 ${sortBy === 'price' ? 'text-indigo-600' : 'text-gray-400'}`} 
+                      />
+                      {sortBy === 'price' && (
+                        <span className="ml-1 text-xs text-indigo-600">
+                          {sortOrder === 'asc' ? '↑' : '↓'}
+                        </span>
+                      )}
+                    </button>
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    提交時間
+                    <button 
+                      className="flex items-center focus:outline-none"
+                      onClick={() => handleSort('createdAt')}
+                    >
+                      提交時間
+                      <CalendarClock 
+                        className={`h-4 w-4 ml-1 ${sortBy === 'createdAt' ? 'text-indigo-600' : 'text-gray-400'}`} 
+                      />
+                      {sortBy === 'createdAt' && (
+                        <span className="ml-1 text-xs text-indigo-600">
+                          {sortOrder === 'asc' ? '↑' : '↓'}
+                        </span>
+                      )}
+                    </button>
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     狀態
@@ -265,7 +380,20 @@ export default function ProductReviewPage() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {products.map((product) => (
-                  <tr key={product.id} className="hover:bg-gray-50">
+                  <tr key={product.id} className={`hover:bg-gray-50 ${product.isMarked ? 'bg-blue-50' : ''}`}>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <button
+                        onClick={() => handleToggleMark(product.id, product.isMarked || false)}
+                        className="text-blue-600 hover:text-blue-900 focus:outline-none"
+                        title={product.isMarked ? "取消標記" : "標記此商品"}
+                      >
+                        {product.isMarked ? (
+                          <BookmarkMinus className="h-5 w-5" />
+                        ) : (
+                          <BookmarkPlus className="h-5 w-5" />
+                        )}
+                      </button>
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-10 w-10 relative rounded overflow-hidden">

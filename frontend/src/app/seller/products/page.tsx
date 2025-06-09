@@ -395,6 +395,33 @@ export default function SellerProductsPage() {
                           ? '已完成媒合'
                           : '未知'}
                       </span>
+                      
+                      {/* 審核狀態標籤 */}
+                      {product.status === 'pending' && (
+                        <span
+                          className={`mt-1 px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            product.verification.status === 'pending'
+                              ? 'bg-yellow-50 text-yellow-600'
+                              : product.verification.status === 'rejected'
+                              ? 'bg-red-50 text-red-600'
+                              : product.verification.status === 'needs_info'
+                              ? 'bg-blue-50 text-blue-600'
+                              : product.verification.status === 'verified'
+                              ? 'bg-green-50 text-green-600'
+                              : ''
+                          }`}
+                        >
+                          {product.verification.status === 'pending'
+                            ? '審核中'
+                            : product.verification.status === 'rejected'
+                            ? '已拒絕'
+                            : product.verification.status === 'needs_info'
+                            ? '需補件'
+                            : product.verification.status === 'verified'
+                            ? '已驗證'
+                            : ''}
+                        </span>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {product.statistics.views}
@@ -408,14 +435,27 @@ export default function SellerProductsPage() {
                       <div className="flex flex-col space-y-2">
                         <div className="flex space-x-2">
                           <Link
-                            href={`/products/${product.id}`}
+                            href={`/seller/products/${product.id}`}
                             className="text-indigo-600 hover:text-indigo-900"
                           >
                             查看
                           </Link>
                           <Link
                             href={`/seller/products/edit/${product.id}`}
-                            className="text-yellow-600 hover:text-yellow-900"
+                            className={`text-yellow-600 hover:text-yellow-900 ${
+                              product.status === 'pending' && 
+                              product.verification.status !== 'needs_info' && 
+                              product.verification.status !== 'rejected'
+                                ? 'opacity-50 pointer-events-none'
+                                : ''
+                            }`}
+                            title={
+                              product.status === 'pending' && 
+                              product.verification.status !== 'needs_info' && 
+                              product.verification.status !== 'rejected'
+                                ? '審核中的商品無法編輯'
+                                : '編輯商品'
+                            }
                           >
                             編輯
                           </Link>

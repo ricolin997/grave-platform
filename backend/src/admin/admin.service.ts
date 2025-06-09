@@ -249,4 +249,95 @@ export class AdminService {
       totalPages,
     };
   }
+
+  /**
+   * 標記商品
+   */
+  async markProduct(productId: string): Promise<ProductResponseDto> {
+    const product = await this.productModel.findById(productId);
+    if (!product) {
+      throw new NotFoundException(`ID為 ${productId} 的商品不存在`);
+    }
+
+    // 設置標記
+    product['isMarked'] = true;
+    
+    // 保存產品
+    const updatedProduct = await product.save();
+
+    // 返回產品響應對象
+    const response: ProductResponseDto = {
+      id: updatedProduct._id.toString(),
+      sellerId: updatedProduct.sellerId.toString(),
+      basicInfo: updatedProduct.basicInfo,
+      location: updatedProduct.location,
+      features: updatedProduct.features,
+      legalInfo: updatedProduct.legalInfo,
+      verification: {
+        status: updatedProduct.verification.status,
+        documents: updatedProduct.verification.documents,
+        verifiedAt: updatedProduct.verification.verifiedAt,
+      },
+      status: updatedProduct.status,
+      statistics: updatedProduct.statistics,
+      metadata: {
+        createdAt: updatedProduct.createdAt,
+        updatedAt: updatedProduct.updatedAt,
+        publishedAt: updatedProduct.metadata?.publishedAt,
+        soldAt: updatedProduct.metadata?.soldAt,
+      },
+      isMarked: true,
+    };
+
+    return response;
+  }
+
+  /**
+   * 取消標記商品
+   */
+  async unmarkProduct(productId: string): Promise<ProductResponseDto> {
+    const product = await this.productModel.findById(productId);
+    if (!product) {
+      throw new NotFoundException(`ID為 ${productId} 的商品不存在`);
+    }
+
+    // 取消標記
+    product['isMarked'] = false;
+    
+    // 保存產品
+    const updatedProduct = await product.save();
+
+    // 返回產品響應對象
+    const response: ProductResponseDto = {
+      id: updatedProduct._id.toString(),
+      sellerId: updatedProduct.sellerId.toString(),
+      basicInfo: updatedProduct.basicInfo,
+      location: updatedProduct.location,
+      features: updatedProduct.features,
+      legalInfo: updatedProduct.legalInfo,
+      verification: {
+        status: updatedProduct.verification.status,
+        documents: updatedProduct.verification.documents,
+        verifiedAt: updatedProduct.verification.verifiedAt,
+      },
+      status: updatedProduct.status,
+      statistics: updatedProduct.statistics,
+      metadata: {
+        createdAt: updatedProduct.createdAt,
+        updatedAt: updatedProduct.updatedAt,
+        publishedAt: updatedProduct.metadata?.publishedAt,
+        soldAt: updatedProduct.metadata?.soldAt,
+      },
+      isMarked: false,
+    };
+
+    return response;
+  }
+
+  /**
+   * 獲取待審核商品數量
+   */
+  async getPendingProductsCount(): Promise<number> {
+    return this.productModel.countDocuments({ status: 'pending' });
+  }
 } 

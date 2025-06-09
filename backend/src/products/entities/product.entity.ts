@@ -186,6 +186,9 @@ export class Product {
     publishedAt?: Date;
     soldAt?: Date;
   };
+
+  @Prop({ type: Boolean, default: false })
+  isMarked: boolean;
 }
 
 export const ProductSchema = SchemaFactory.createForClass(Product); 

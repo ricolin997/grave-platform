@@ -123,4 +123,22 @@ export const productsApi = {
     });
     return response.data;
   },
+
+  // 標記商品 - 管理員功能
+  markProduct: async (id: string): Promise<Product> => {
+    const response = await axiosInstance.post<Product>(`/admin/products/${id}/mark`, {});
+    return response.data;
+  },
+
+  // 取消標記商品 - 管理員功能
+  unmarkProduct: async (id: string): Promise<Product> => {
+    const response = await axiosInstance.post<Product>(`/admin/products/${id}/unmark`, {});
+    return response.data;
+  },
+
+  // 獲取待審核商品數量
+  getPendingProductsCount: async (): Promise<number> => {
+    const response = await axiosInstance.get<{ count: number }>('/admin/products/pending-count');
+    return response.data.count;
+  },
 }; 

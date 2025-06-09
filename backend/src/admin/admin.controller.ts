@@ -143,4 +143,46 @@ export class AdminController {
     // 獲取所有審核歷史
     return await this.adminService.getAllReviewHistory(Number(page), Number(limit));
   }
+
+  @Post('products/:id/mark')
+  async markProduct(
+    @Param('id') id: string,
+    @Request() req: RequestWithUser,
+  ): Promise<ProductResponseDto> {
+    // 檢查權限
+    if (!req.user.permissions?.canReviewProducts) {
+      throw new Error('沒有權限標記產品');
+    }
+    
+    // 標記產品
+    return this.adminService.markProduct(id);
+  }
+
+  @Post('products/:id/unmark')
+  async unmarkProduct(
+    @Param('id') id: string,
+    @Request() req: RequestWithUser,
+  ): Promise<ProductResponseDto> {
+    // 檢查權限
+    if (!req.user.permissions?.canReviewProducts) {
+      throw new Error('沒有權限取消標記產品');
+    }
+    
+    // 取消標記產品
+    return this.adminService.unmarkProduct(id);
+  }
+
+  @Get('products/pending-count')
+  async getPendingProductsCount(
+    @Request() req: RequestWithUser,
+  ): Promise<{ count: number }> {
+    // 檢查權限
+    if (!req.user.permissions?.canReviewProducts) {
+      throw new Error('沒有權限查看待審核產品數量');
+    }
+    
+    // 獲取待審核產品數量
+    const count = await this.adminService.getPendingProductsCount();
+    return { count };
+  }
 } 

@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { productsApi } from '@/lib/api/products';
 import { Product, UpdateProductData } from '@/lib/types/product';
 import ImageUploader from '@/components/products/ImageUploader';
+import Link from 'next/link';
 
 export default function EditProductPage() {
   const router = useRouter();
@@ -95,7 +96,7 @@ export default function EditProductPage() {
           features: productData.features,
           legalInfo: productData.legalInfo,
           verification: productData.verification,
-          status: (productData.status === 'draft' || productData.status === 'published') 
+          status: (productData.status === 'draft' || productData.status === 'published' || productData.status === 'pending') 
             ? productData.status 
             : 'draft', // 如果是已預訂或已售出狀態，表單內顯示為草稿狀態但不可更改
         });
@@ -276,14 +277,16 @@ export default function EditProductPage() {
   };
 
   // 判斷商品是否可編輯
-  const isEditable = product?.status === 'draft' || product?.status === 'published';
+  const isEditable = product?.status === 'draft' || product?.status === 'published' || 
+                     (product?.status === 'pending' && (product?.verification.status === 'rejected' || 
+                                                        product?.verification.status === 'needs_info'));
   
   // 判斷商品是否部分可編輯（已預訂狀態）
   const isPartiallyEditable = product?.status === 'reserved';
 
   // 判斷字段是否可編輯
   const canEditField = (fieldCategory: string, fieldName?: string) => {
-    if (isEditable) return true; // 草稿和已發佈狀態可完全編輯
+    if (isEditable) return true; // 草稿、已發佈、被拒和需補件狀態可完全編輯
     
     if (isPartiallyEditable) {
       // 已預訂狀態僅可編輯部分字段
@@ -292,7 +295,7 @@ export default function EditProductPage() {
       return false;
     }
     
-    return false; // 已售出狀態不可編輯
+    return false; // 已售出狀態和其他狀態不可編輯
   };
 
   if (loading) {
@@ -364,6 +367,62 @@ export default function EditProductPage() {
         >
           返回商品列表
         </button>
+      </div>
+    );
+  }
+  
+  // 如果商品正在審核中且不是被拒絕或需要更多信息，顯示提示並限制編輯
+  if (product?.status === 'pending' && 
+      product.verification.status !== 'rejected' && 
+      product.verification.status !== 'needs_info') {
+    return (
+      <div className="container mx-auto px-4 py-16">
+        <h1 className="text-3xl font-bold mb-6">查看商品：{product.basicInfo.title}</h1>
+        
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+          <p className="text-yellow-700">此商品正在審核中，暫時無法編輯。審核結果出來後您可能可以進行編輯。</p>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div className="bg-white p-6 rounded-lg shadow-md">
+            <h2 className="text-xl font-semibold mb-4">基本信息</h2>
+            <p><strong>標題：</strong> {product.basicInfo.title}</p>
+            <p><strong>價格：</strong> {new Intl.NumberFormat('zh-TW', {
+              style: 'currency',
+              currency: 'TWD',
+              minimumFractionDigits: 0,
+            }).format(product.basicInfo.price)}</p>
+            <p><strong>描述：</strong> {product.basicInfo.description}</p>
+          </div>
+          
+          <div className="bg-white p-6 rounded-lg shadow-md">
+            <h2 className="text-xl font-semibold mb-4">審核狀態</h2>
+            <p><strong>目前狀態：</strong> 待審核</p>
+            <p><strong>提交時間：</strong> {product.metadata.createdAt ? new Date(product.metadata.createdAt).toLocaleDateString('zh-TW') : '未知'}</p>
+            <Link
+              href={`/seller/products/${params.id}`}
+              className="mt-4 inline-block text-indigo-600 hover:text-indigo-800"
+            >
+              查看審核進度
+            </Link>
+          </div>
+        </div>
+        
+        <div className="flex space-x-4">
+          <Link 
+            href={`/products/${params.id}`}
+            className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+          >
+            查看商品詳情
+          </Link>
+          
+          <button
+            onClick={() => router.push('/seller/products')}
+            className="px-6 py-3 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2"
+          >
+            返回商品列表
+          </button>
+        </div>
       </div>
     );
   }
@@ -833,9 +892,19 @@ export default function EditProductPage() {
                     </svg>
                   </div>
                   <div className="ml-3">
-                    <p className="text-sm text-yellow-700">
-                      所有商品在發佈前必須通過管理員審核。請先選擇「提交審核」選項，待審核通過後才能發佈商品。
-                    </p>
+                    {formData.status === 'pending' ? (
+                      <p className="text-sm text-yellow-700">
+                        您的商品目前處於<strong>待審核</strong>狀態，正在等待管理員審核。審核通過後，您才能將商品發佈到平台上。
+                      </p>
+                    ) : formData.status === 'published' ? (
+                      <p className="text-sm text-yellow-700">
+                        您的商品目前處於<strong>已發佈</strong>狀態，買家可以在平台上看到此商品。如需下架，可將狀態改為草稿。
+                      </p>
+                    ) : (
+                      <p className="text-sm text-yellow-700">
+                        所有商品在發佈前必須通過管理員審核。請先選擇「提交審核」選項，待審核通過後才能發佈商品。
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>

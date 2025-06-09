@@ -67,4 +67,5 @@ export class ProductResponseDto {
     soldAt?: Date;
   };
   isFavorited?: boolean;
+  isMarked?: boolean;
 } 

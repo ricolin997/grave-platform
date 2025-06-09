@@ -202,6 +202,9 @@ export class ProductsService {
       maxPrice?: number;
       type?: string;
       status?: string;
+      sortBy?: string;
+      sort?: string;
+      marked?: boolean;
     },
     page = 1,
     limit = 10,
@@ -242,14 +245,41 @@ export class ProductsService {
       if (query.status) {
         filter.status = query.status;
       }
+      
+      // 過濾標記的商品
+      if (query.marked !== undefined) {
+        filter.isMarked = query.marked;
+      }
 
       // 計算總數
       const total = await this.productModel.countDocuments(filter);
       
+      // 決定排序方式
+      let sortOption: any = { 'metadata.publishedAt': -1 }; // 默認按發布時間降序
+      
+      if (query.sortBy) {
+        const sortDirection = query.sort === 'asc' ? 1 : -1;
+        
+        switch (query.sortBy) {
+          case 'price':
+            sortOption = { 'basicInfo.price': sortDirection };
+            break;
+          case 'createdAt':
+            sortOption = { 'createdAt': sortDirection };
+            break;
+          case 'title':
+            sortOption = { 'basicInfo.title': sortDirection };
+            break;
+          default:
+            // 默認按發布時間排序
+            sortOption = { 'metadata.publishedAt': sortDirection };
+        }
+      }
+      
       // 執行查詢
       const products = await this.productModel
         .find(filter)
-        .sort({ 'metadata.publishedAt': -1 }) // 按發佈時間降序
+        .sort(sortOption)
         .skip(skip)
         .limit(limit)
         .exec();
@@ -501,6 +531,7 @@ export class ProductsService {
         publishedAt: product.metadata?.publishedAt,
         soldAt: product.metadata?.soldAt,
       },
+      isMarked: product['isMarked'] || false,
     } as ProductResponseDto;
 
     // 如果需要，獲取賣家名稱

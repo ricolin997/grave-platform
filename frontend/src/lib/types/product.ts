@@ -131,6 +131,7 @@ export interface Product {
   metadata: ProductMetadata;
   isFavorited?: boolean;
   reviewHistory?: ReviewHistory[];
+  isMarked?: boolean;  // 管理員標記，需要後續關注
 }
 
 // 創建商品用的數據
@@ -171,6 +172,9 @@ export interface ProductQuery {
   type?: string;
   status?: string | ProductStatus;
   verification?: string | VerificationStatus;
+  sortBy?: string;  // 排序欄位，如createdAt, price等
+  sort?: 'asc' | 'desc';  // 排序方向，升序或降序
+  marked?: boolean; // 是否只顯示被標記的商品
   page?: number;
   limit?: number;
 }
