@@ -19,6 +19,11 @@ export default function PermissionGuard({
 }: PermissionGuardProps) {
   const { user } = useAuth();
 
+  // 如果是創辦人帳號，直接有所有權限
+  if (user?.email === 'paul@mumu.com') {
+    return <>{children}</>;
+  }
+
   // 檢查用戶是否為管理員且具有所需權限
   const hasPermission = 
     user?.role === 'admin' && 

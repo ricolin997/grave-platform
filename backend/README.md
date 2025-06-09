@@ -96,3 +96,90 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 ## License
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+
+## 管理員權限系統
+
+本系統實現了基於角色的權限控制（RBAC），允許創建不同角色並為每個角色分配特定權限。
+
+### 主要功能
+
+1. **角色管理**：創建、編輯、刪除不同角色
+2. **權限管理**：為每個角色分配不同權限
+3. **用戶角色分配**：將角色分配給管理員用戶
+
+### 預設角色
+
+系統初始化時會創建以下預設角色：
+
+- **超級管理員**：擁有所有權限，通常分配給創辦人
+- **商品審核員**：負責審核和管理商品
+- **用戶管理員**：負責管理用戶和處理相關事務
+- **客服專員**：處理客戶咨詢和訂單相關問題
+- **內容編輯**：負責編輯和管理網站內容
+
+### 權限代碼
+
+權限使用以下格式命名：`resource:action`，例如：
+
+- `product:review` - 審核商品
+- `user:manage` - 管理用戶
+- `settings:manage` - 管理系統設置
+
+### API 使用方法
+
+#### 角色管理
+
+```typescript
+// 獲取所有角色
+GET /roles
+
+// 獲取特定角色
+GET /roles/:id
+
+// 創建新角色
+POST /roles
+Body: { name: string, description: string, permissions: string[] }
+
+// 更新角色
+PUT /roles/:id
+Body: { name?: string, description?: string, permissions?: string[] }
+
+// 刪除角色
+DELETE /roles/:id
+
+// 為角色添加權限
+POST /roles/:id/permissions/:permissionCode
+
+// 從角色移除權限
+DELETE /roles/:id/permissions/:permissionCode
+```
+
+#### 權限管理
+
+```typescript
+// 獲取所有權限
+GET /permissions
+
+// 獲取特定權限
+GET /permissions/:id
+
+// 獲取特定權限代碼
+GET /permissions/code/:code
+```
+
+### 在控制器中使用權限
+
+```typescript
+import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
+import { PermissionGuard } from '../auth/guards/permission.guard';
+
+@Controller('products')
+@UseGuards(AuthGuard('jwt'), PermissionGuard)
+export class ProductsController {
+  @Post('review')
+  @RequirePermissions('product:review')
+  async reviewProduct() {
+    // 只有具有 product:review 權限的用戶才能訪問
+  }
+}
+```

@@ -3,6 +3,7 @@ export type UserRole = 'buyer' | 'seller' | 'admin';
 export interface User {
   id: string;
   role: UserRole;
+  roleId?: string;
   email: string;
   profile: {
     name: string;

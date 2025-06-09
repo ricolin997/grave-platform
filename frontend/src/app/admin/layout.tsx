@@ -39,6 +39,16 @@ const adminMenuItems = [
     permission: 'canManageUsers', // 需要用戶管理權限
   },
   {
+    title: '角色管理',
+    href: '/admin/roles',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+      </svg>
+    ),
+    permission: 'canManageUsers', // 需要用戶管理權限
+  },
+  {
     title: '統計數據',
     href: '/admin/statistics',
     icon: (
@@ -116,6 +126,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               {adminMenuItems.map((item) => {
                 // 檢查權限
                 const hasPermission = 
+                  // 創辦人帳號擁有所有權限
+                  (user?.email === 'paul@mumu.com') ||
                   // 如果菜單項不需要權限，或者用戶有對應權限
                   item.permission === null || 
                   (user?.permissions && user.permissions[item.permission as keyof typeof user.permissions]);
@@ -128,7 +140,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     <Link
                       href={item.href}
                       className={`flex items-center px-4 py-3 text-sm font-medium ${
-                        pathname === item.href
+                        pathname === item.href || (item.href !== '/admin' && pathname?.startsWith(item.href))
                           ? 'bg-indigo-800 text-white'
                           : 'text-indigo-100 hover:bg-indigo-600'
                       }`}

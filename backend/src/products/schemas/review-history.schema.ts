@@ -1,4 +1,16 @@
-import { Schema } from 'mongoose';
+import { Schema, Document } from 'mongoose';
+
+// 定義ReviewHistory接口
+export interface ReviewHistory {
+  productId: any;
+  adminId: any;
+  action: 'approve' | 'reject' | 'needs_info';
+  note: string;
+  createdAt: Date;
+}
+
+// 定義ReviewHistoryDocument類型
+export type ReviewHistoryDocument = ReviewHistory & Document;
 
 export const ReviewHistorySchema = new Schema({
   productId: { type: Schema.Types.ObjectId, ref: 'Product', required: true },

@@ -2,8 +2,11 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
-import { Product, ProductSchema } from '../products/entities/product.entity';
+import { UsersModule } from '../users/users.module';
 import { ProductsModule } from '../products/products.module';
+import { RolesModule } from '../roles/roles.module';
+import { PermissionsModule } from '../permissions/permissions.module';
+import { Product, ProductSchema } from '../products/entities/product.entity';
 import { ReviewHistorySchema } from '../products/schemas/review-history.schema';
 
 @Module({
@@ -12,7 +15,10 @@ import { ReviewHistorySchema } from '../products/schemas/review-history.schema';
       { name: Product.name, schema: ProductSchema },
       { name: 'ReviewHistory', schema: ReviewHistorySchema },
     ]),
+    UsersModule,
     ProductsModule,
+    RolesModule,
+    PermissionsModule,
   ],
   controllers: [AdminController],
   providers: [AdminService],

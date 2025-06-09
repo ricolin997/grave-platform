@@ -1,10 +1,17 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, Logger, OnModuleInit } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { ProductsService } from '../products/products.service';
 import { Product, ProductDocument } from '../products/entities/product.entity';
 import { ProductResponseDto } from '../products/dto/product-response.dto';
-import { Document, Schema as MongooseSchema } from 'mongoose';
+import { Document } from 'mongoose';
+import { RolesService } from '../roles/roles.service';
+import { PermissionsService } from '../permissions/permissions.service';
+import { UsersService } from '../users/users.service';
+import { RoleDocument } from '../roles/entities/role.entity';
+
+// 定義產品狀態類型
+type ProductStatus = 'draft' | 'pending' | 'published' | 'reserved' | 'negotiating' | 'inspecting' | 'completed' | 'rejected' | 'sold' | 'deleted';
 
 // 定義 ReviewHistory 接口
 interface ReviewHistory {
@@ -18,12 +25,66 @@ interface ReviewHistory {
 type ReviewHistoryDocument = ReviewHistory & Document;
 
 @Injectable()
-export class AdminService {
+export class AdminService implements OnModuleInit {
+  private readonly logger = new Logger(AdminService.name);
+
   constructor(
     @InjectModel(Product.name) private productModel: Model<ProductDocument>,
     @InjectModel('ReviewHistory') private reviewHistoryModel: Model<ReviewHistoryDocument>,
     private readonly productsService: ProductsService,
+    private readonly rolesService: RolesService,
+    private readonly permissionsService: PermissionsService,
+    private readonly usersService: UsersService,
   ) {}
+
+  async onModuleInit() {
+    // 初始化角色和權限系統
+    try {
+      this.logger.log('初始化權限和角色系統...');
+      await this.permissionsService.initializeDefaultPermissions();
+      await this.rolesService.initializeDefaultRoles();
+      this.logger.log('權限和角色系統初始化完成');
+      
+      // 確保創辦人帳戶有超級管理員角色
+      await this.ensureFounderHasSuperAdminRole();
+    } catch (error) {
+      this.logger.error('初始化權限系統失敗', error.message);
+    }
+  }
+  
+  private async ensureFounderHasSuperAdminRole() {
+    try {
+      const founderEmail = 'paul@mumu.com';
+      
+      try {
+        const founder = await this.usersService.findByEmail(founderEmail);
+        
+        if (founder) {
+          // 獲取超級管理員角色
+          const superAdminRoleName = '超級管理員';
+          const roleResult = await this.rolesService.findByName(superAdminRoleName);
+          
+          // 直接使用Mongoose模型對象，而不是轉換的對象
+          if (roleResult) {
+            // 獲取Mongoose模型對象中的_id
+            const roleDoc = roleResult as unknown as RoleDocument;
+            const roleId = roleDoc._id ? roleDoc._id.toString() : null;
+            
+            if (roleId) {
+              founder.roleId = roleId;
+              await founder.save();
+              
+              this.logger.log(`已成功分配超級管理員角色給創辦人 (${founderEmail})`);
+            }
+          }
+        }
+      } catch (error) {
+        this.logger.error(`查找創始人賬戶失敗: ${error.message}`);
+      }
+    } catch (error) {
+      this.logger.error('設置創辦人角色失敗', error.message);
+    }
+  }
 
   /**
    * 批准商品
@@ -339,5 +400,112 @@ export class AdminService {
    */
   async getPendingProductsCount(): Promise<number> {
     return this.productModel.countDocuments({ status: 'pending' });
+  }
+
+  // 待審核商品數量
+  async countPendingProducts(): Promise<number> {
+    return this.productModel.countDocuments({ 
+      status: 'pending',
+      'verification.status': 'pending'
+    }).exec();
+  }
+
+  // 獲取待審核的商品
+  async getPendingProducts(page: number = 1, limit: number = 10) {
+    const skip = (page - 1) * limit;
+    
+    const [products, total] = await Promise.all([
+      this.productModel.find({ 
+        status: 'pending',
+        'verification.status': 'pending'
+      })
+        .sort({ 'metadata.createdAt': -1 })
+        .skip(skip)
+        .limit(limit)
+        .exec(),
+      this.productModel.countDocuments({ 
+        status: 'pending',
+        'verification.status': 'pending'
+      }).exec(),
+    ]);
+    
+    return {
+      products,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  // 獲取單個商品的審核信息
+  async getProductForReview(id: string) {
+    const product = await this.productModel.findById(id).exec();
+    
+    if (!product) {
+      throw new Error('商品不存在');
+    }
+    
+    const reviewHistory = await this.reviewHistoryModel.find({ 
+      productId: id 
+    }).sort({ createdAt: -1 }).exec();
+    
+    return {
+      product,
+      reviewHistory,
+    };
+  }
+
+  // 審核商品
+  async reviewProduct(id: string, action: 'approve' | 'reject' | 'needMoreInfo', reviewNote: string, reviewerId: string) {
+    const product = await this.productModel.findById(id).exec();
+    
+    if (!product) {
+      throw new Error('商品不存在');
+    }
+    
+    let status: ProductStatus = product.status;
+    let verificationStatus = product.verification.status;
+    
+    if (action === 'approve') {
+      status = 'published';
+      verificationStatus = 'verified';
+    } else if (action === 'reject') {
+      status = 'rejected';
+      verificationStatus = 'rejected';
+    } else if (action === 'needMoreInfo') {
+      status = 'pending';
+      verificationStatus = 'needs_info';
+    }
+    
+    // 更新商品狀態
+    await this.productModel.updateOne(
+      { _id: id },
+      { 
+        $set: { 
+          status: status,
+          'verification.status': verificationStatus,
+          'verification.reviewNote': reviewNote,
+          'metadata.reviewedAt': new Date(),
+          ...(status === 'published' ? { 'metadata.publishedAt': new Date() } : {})
+        } 
+      }
+    ).exec();
+    
+    // 創建審核歷史記錄
+    const reviewHistory = new this.reviewHistoryModel({
+      productId: id,
+      reviewerId,
+      action,
+      note: reviewNote,
+      createdAt: new Date()
+    });
+    
+    await reviewHistory.save();
+    
+    return {
+      status,
+      verificationStatus,
+      reviewNote,
+    };
   }
 } 

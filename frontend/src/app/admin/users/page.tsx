@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usersApi } from '@/lib/api/users';
 import { UserListItem, UserRole } from '@/lib/types/user';
 import PermissionGuard from '@/components/admin/PermissionGuard';
+import { useRouter } from 'next/navigation';
 
 export default function UsersManagementPage() {
   const [users, setUsers] = useState<UserListItem[]>([]);
@@ -18,6 +19,7 @@ export default function UsersManagementPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('createdAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const router = useRouter();
 
   // 載入用戶列表
   useEffect(() => {
@@ -149,6 +151,11 @@ export default function UsersManagementPage() {
       console.error('刪除用戶失敗', err);
       alert('操作失敗，請稍後再試');
     }
+  };
+
+  // 分配角色
+  const handleAssignRole = (userId: string) => {
+    router.push(`/admin/users/assign-role?id=${userId}`);
   };
 
   // 獲取用戶角色標籤樣式
@@ -438,18 +445,18 @@ export default function UsersManagementPage() {
                         {formatDate(user.createdAt.toString())}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex items-center justify-end space-x-2">
+                        <div className="flex justify-end space-x-2">
                           <Link
                             href={`/admin/users/${user.id}`}
                             className="text-indigo-600 hover:text-indigo-900"
                           >
-                            查看
+                            詳情
                           </Link>
-                          
+
                           {user.status === 'active' ? (
                             <button
                               onClick={() => handleSuspendUser(user.id)}
-                              className="text-yellow-600 hover:text-yellow-900"
+                              className="text-red-600 hover:text-red-900"
                             >
                               停用
                             </button>
@@ -461,15 +468,22 @@ export default function UsersManagementPage() {
                               啟用
                             </button>
                           ) : null}
-                          
-                          {user.role !== 'admin' && (
+
+                          {user.role === 'admin' && (
                             <button
-                              onClick={() => handleDeleteUser(user.id)}
-                              className="text-red-600 hover:text-red-900"
+                              onClick={() => handleAssignRole(user.id)}
+                              className="text-blue-600 hover:text-blue-900"
                             >
-                              刪除
+                              分配角色
                             </button>
                           )}
+
+                          <button
+                            onClick={() => handleDeleteUser(user.id)}
+                            className="text-gray-600 hover:text-gray-900"
+                          >
+                            刪除
+                          </button>
                         </div>
                       </td>
                     </tr>

@@ -1,5 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
+import * as mongoose from 'mongoose';
+import { Role } from '../../roles/entities/role.entity';
 
 export type UserDocument = User & Document & {
   createdAt: Date;
@@ -125,6 +127,9 @@ export class User {
   metadata: {
     status: 'active' | 'suspended';
   };
+  
+  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'Role' })
+  roleId?: string;
 
   @Prop({
     type: {
@@ -147,6 +152,58 @@ export class User {
     canViewStatistics: boolean;
     canManageSettings: boolean;
   };
+  
+  // Helper method to check if user has specific permission
+  hasPermission(permissionCode: string): boolean {
+    // Super admin has all permissions
+    if (this.email === 'paul@mumu.com') {
+      return true;
+    }
+    
+    // Legacy permission check
+    if (this.permissions) {
+      switch(permissionCode) {
+        case 'product:review':
+          return !!this.permissions.canReviewProducts;
+        case 'user:manage':
+          return !!this.permissions.canManageUsers;
+        case 'statistics:view':
+          return !!this.permissions.canViewStatistics;
+        case 'settings:manage':
+          return !!this.permissions.canManageSettings;
+        default:
+          return false;
+      }
+    }
+    
+    return false; // If no permissions defined
+  }
 }
 
 export const UserSchema = SchemaFactory.createForClass(User); 
+
+// Add method to schema
+UserSchema.methods.hasPermission = function(permissionCode: string) {
+  // Super admin has all permissions
+  if (this.email === 'paul@mumu.com') {
+    return true;
+  }
+  
+  // Legacy permission check
+  if (this.permissions) {
+    switch(permissionCode) {
+      case 'product:review':
+        return !!this.permissions.canReviewProducts;
+      case 'user:manage':
+        return !!this.permissions.canManageUsers;
+      case 'statistics:view':
+        return !!this.permissions.canViewStatistics;
+      case 'settings:manage':
+        return !!this.permissions.canManageSettings;
+      default:
+        return false;
+    }
+  }
+  
+  return false; // If no permissions defined
+}; 

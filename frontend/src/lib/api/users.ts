@@ -49,12 +49,7 @@ export const usersApi = {
     email: string;
     password: string;
     name: string;
-    permissions: {
-      canReviewProducts: boolean;
-      canManageUsers: boolean;
-      canViewStatistics: boolean;
-      canManageSettings: boolean;
-    };
+    roleId?: string; // 用戶角色ID
   }): Promise<User> => {
     const response = await axiosInstance.post<User>('/admin/users/create-admin', data);
     return response.data;
@@ -93,6 +88,21 @@ export const usersApi = {
       adminCount: number;
       userGrowthData: { date: string; count: number }[];
     }>('/admin/users/statistics');
+    return response.data;
+  },
+
+  // 分配角色给用户
+  assignRole: async (userId: string, roleId: string): Promise<User> => {
+    const response = await axiosInstance.post<User>(`/admin/users/${userId}/role`, { roleId });
+    return response.data;
+  },
+
+  // 获取管理员列表
+  getAdmins: async (query: UserQuery = {}): Promise<UsersResponse> => {
+    const queryWithRole = { ...query, role: 'admin' };
+    const response = await axiosInstance.get<UsersResponse>('/admin/users', {
+      params: queryWithRole,
+    });
     return response.data;
   },
 }; 
