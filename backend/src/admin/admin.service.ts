@@ -399,7 +399,20 @@ export class AdminService implements OnModuleInit {
    * 獲取待審核商品數量
    */
   async getPendingProductsCount(): Promise<number> {
-    return this.productModel.countDocuments({ status: 'pending' });
+    try {
+      this.logger.log('獲取待審核商品數量開始');
+      
+      // 只統計狀態為 pending 的商品數量
+      const count = await this.productModel.countDocuments({ 
+        status: 'pending'
+      }).exec();
+      
+      this.logger.log(`找到 ${count} 個待審核商品`);
+      return count;
+    } catch (error) {
+      this.logger.error(`獲取待審核產品數量失敗: ${error.message || '未知錯誤'}`, error.stack || '');
+      throw error;
+    }
   }
 
   // 待審核商品數量

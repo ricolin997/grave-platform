@@ -6,7 +6,10 @@ import {
   Param,
   UseGuards,
   Query,
-  Request
+  Request,
+  HttpException,
+  HttpStatus,
+  Logger
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AdminGuard } from '../auth/guards/admin.guard';
@@ -176,13 +179,24 @@ export class AdminController {
   async getPendingProductsCount(
     @Request() req: RequestWithUser,
   ): Promise<{ count: number }> {
-    // 檢查權限
-    if (!req.user.permissions?.canReviewProducts) {
-      throw new Error('沒有權限查看待審核產品數量');
-    }
+    const logger = new Logger('AdminController');
     
-    // 獲取待審核產品數量
-    const count = await this.adminService.getPendingProductsCount();
-    return { count };
+    try {
+      // 檢查權限
+      if (!req.user.permissions?.canReviewProducts) {
+        throw new HttpException('沒有權限查看待審核產品數量', HttpStatus.FORBIDDEN);
+      }
+      
+      // 獲取待審核產品數量
+      const count = await this.adminService.getPendingProductsCount();
+      logger.log(`成功獲取待審核商品數量: ${count}`);
+      return { count };
+    } catch (error) {
+      logger.error(`獲取待審核產品數量失敗: ${error.message || error}`, error.stack);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException('獲取待審核產品數量失敗', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
   }
 } 

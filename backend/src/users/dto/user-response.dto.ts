@@ -27,4 +27,10 @@ export class UserResponseDto {
     createdAt: Date;
     updatedAt: Date;
   };
+  permissions?: {
+    canReviewProducts: boolean;
+    canManageUsers: boolean;
+    canViewStatistics: boolean;
+    canManageSettings: boolean;
+  };
 } 

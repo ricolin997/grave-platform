@@ -100,7 +100,7 @@ export class UsersService {
   }
 
   private buildUserResponse(user: UserDocument): UserResponseDto {
-    const { _id, role, email, profile, preferences, statistics, metadata } = user;
+    const { _id, role, email, profile, preferences, statistics, metadata, permissions } = user;
     
     // 獲取時間戳字段，確保類型安全
     const createdAt = user.createdAt instanceof Date ? user.createdAt : new Date();
@@ -124,6 +124,12 @@ export class UsersService {
         createdAt,
         updatedAt,
       },
+      permissions: permissions || {
+        canReviewProducts: false,
+        canManageUsers: false,
+        canViewStatistics: false,
+        canManageSettings: false,
+      }
     };
   }
 } 
