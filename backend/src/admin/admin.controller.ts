@@ -9,7 +9,9 @@ import {
   Request,
   HttpException,
   HttpStatus,
-  Logger
+  Logger,
+  NotFoundException,
+  ForbiddenException
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AdminGuard } from '../auth/guards/admin.guard';
@@ -79,13 +81,35 @@ export class AdminController {
     @Body() data: { reviewNote?: string },
     @Request() req: RequestWithUser,
   ): Promise<ProductResponseDto> {
-    // 檢查權限
-    if (!req.user.permissions?.canReviewProducts) {
-      throw new Error('沒有權限審核產品');
-    }
+    const logger = new Logger('AdminController');
     
-    // 審核通過
-    return this.adminService.approveProduct(id, req.user.id, data.reviewNote);
+    try {
+      logger.log(`開始處理商品批准請求，商品ID: ${id}, 管理員ID: ${req.user.id}`);
+      
+      // 檢查權限
+      if (!req.user.permissions?.canReviewProducts) {
+        logger.warn(`管理員 ${req.user.id} 缺少審核權限，拒絕操作`);
+        throw new HttpException('沒有權限審核產品', HttpStatus.FORBIDDEN);
+      }
+      
+      // 審核通過
+      logger.log(`權限驗證通過，執行商品批准操作`);
+      const result = await this.adminService.approveProduct(id, req.user.id, data.reviewNote);
+      
+      logger.log(`商品批准成功，商品ID: ${id}`);
+      return result;
+    } catch (error) {
+      logger.error(`商品批准處理失敗: ${error.message || '未知錯誤'}`, error.stack || '');
+      
+      // 根據錯誤類型返回適當的 HTTP 狀態碼
+      if (error instanceof NotFoundException) {
+        throw new HttpException(error.message, HttpStatus.NOT_FOUND);
+      } else if (error instanceof ForbiddenException) {
+        throw new HttpException(error.message, HttpStatus.FORBIDDEN);
+      } else {
+        throw new HttpException('處理商品批准請求時發生錯誤', HttpStatus.INTERNAL_SERVER_ERROR);
+      }
+    }
   }
 
   @Post('products/:id/reject')

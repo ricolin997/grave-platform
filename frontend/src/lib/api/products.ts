@@ -141,4 +141,11 @@ export const productsApi = {
     const response = await axiosInstance.get<{ count: number }>('/admin/products/pending-count');
     return response.data.count;
   },
+
+  // 將商品上架
+  publishProduct: async (id: string, newPrice?: number): Promise<Product> => {
+    const payload = newPrice !== undefined ? { price: newPrice } : {};
+    const response = await axiosInstance.patch<Product>(`/products/${id}/publish`, payload);
+    return response.data;
+  },
 }; 

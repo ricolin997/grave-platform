@@ -124,4 +124,15 @@ export class ProductsController {
     };
     return this.productsService.update(id, userId, updateDto);
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id/publish')
+  publishProduct(
+    @Param('id') id: string,
+    @Body() updateData: { price?: number },
+    @Request() req: RequestWithUser,
+  ): Promise<ProductResponseDto> {
+    const userId = req.user.id;
+    return this.productsService.publishProduct(id, userId, updateData.price);
+  }
 } 

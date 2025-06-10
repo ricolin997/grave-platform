@@ -145,10 +145,10 @@ export class Product {
 
   @Prop({
     type: String,
-    enum: ['draft', 'pending', 'published', 'reserved', 'negotiating', 'inspecting', 'completed', 'rejected', 'sold', 'deleted'],
+    enum: ['draft', 'pending', 'approved-pending', 'published', 'reserved', 'negotiating', 'inspecting', 'completed', 'rejected', 'sold', 'deleted'],
     default: 'draft',
   })
-  status: 'draft' | 'pending' | 'published' | 'reserved' | 'negotiating' | 'inspecting' | 'completed' | 'rejected' | 'sold' | 'deleted';
+  status: 'draft' | 'pending' | 'approved-pending' | 'published' | 'reserved' | 'negotiating' | 'inspecting' | 'completed' | 'rejected' | 'sold' | 'deleted';
 
   @Prop({
     type: {
@@ -178,12 +178,14 @@ export class Product {
   @Prop({
     type: {
       publishedAt: { type: Date },
+      approvedAt: { type: Date },
       soldAt: { type: Date },
     },
     _id: false,
   })
   metadata: {
     publishedAt?: Date;
+    approvedAt?: Date;
     soldAt?: Date;
   };
 

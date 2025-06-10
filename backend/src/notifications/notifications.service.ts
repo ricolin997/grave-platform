@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { Notification, NotificationDocument } from './entities/notification.entity';
 import { OrderStatus } from '../orders/enums/order-status.enum';
 
@@ -19,7 +19,7 @@ export class NotificationsService {
     data?: any;
   }): Promise<Notification> {
     const notification = new this.notificationModel({
-      userId,
+      userId: new Types.ObjectId(userId),
       ...data,
     });
     return notification.save();
@@ -28,7 +28,7 @@ export class NotificationsService {
   // 獲取用戶的所有通知
   async getUserNotifications(userId: string): Promise<Notification[]> {
     return this.notificationModel
-      .find({ userId })
+      .find({ userId: new Types.ObjectId(userId) })
       .sort({ createdAt: -1 })
       .exec();
   }
@@ -36,7 +36,7 @@ export class NotificationsService {
   // 獲取用戶的未讀通知
   async getUnreadNotifications(userId: string): Promise<Notification[]> {
     return this.notificationModel
-      .find({ userId, read: false })
+      .find({ userId: new Types.ObjectId(userId), read: false })
       .sort({ createdAt: -1 })
       .exec();
   }
@@ -45,7 +45,7 @@ export class NotificationsService {
   async markAsRead(userId: string, notificationId: string): Promise<Notification | null> {
     return this.notificationModel
       .findOneAndUpdate(
-        { _id: notificationId, userId },
+        { _id: notificationId, userId: new Types.ObjectId(userId) },
         { read: true, readAt: new Date() },
         { new: true },
       )
@@ -56,7 +56,7 @@ export class NotificationsService {
   async markAllAsRead(userId: string): Promise<void> {
     await this.notificationModel
       .updateMany(
-        { userId, read: false },
+        { userId: new Types.ObjectId(userId), read: false },
         { read: true, readAt: new Date() },
       )
       .exec();
@@ -89,6 +89,25 @@ export class NotificationsService {
         orderNumber,
         oldStatus,
         newStatus,
+      },
+    });
+  }
+
+  // 創建商品審核通過通知
+  async createProductApprovedNotification(
+    userId: string,
+    productId: string,
+    productTitle: string,
+    reviewNote?: string,
+  ): Promise<Notification> {
+    return this.create(userId, {
+      type: 'product_approved',
+      title: '商品審核通過',
+      message: `您的商品 "${productTitle}" 已通過審核，可進行上架`,
+      data: {
+        productId,
+        productTitle,
+        reviewNote: reviewNote || '您的商品符合平台要求，已通過審核。',
       },
     });
   }

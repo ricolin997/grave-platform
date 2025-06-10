@@ -87,22 +87,24 @@ export interface ProductMetadata {
   createdAt: Date;
   updatedAt: Date;
   publishedAt?: Date;
+  approvedAt?: Date; // 批准時間
   soldAt?: Date;
   reviewedAt?: Date; // 審核時間
 }
 
 // 商品狀態
 export type ProductStatus = 
-  | 'draft'        // 草稿，尚未發佈
-  | 'pending'      // 等待審核
-  | 'published'    // 已發佈，可被搜索
-  | 'reserved'     // 已預訂，有人有意向購買
-  | 'negotiating'  // 洽談中，買家與賣家正在協商
-  | 'inspecting'   // 實地查看中
-  | 'completed'    // 已完成媒合，但未下架
-  | 'rejected'     // 審核被拒絕
-  | 'sold'         // 已售出/已完成，不再顯示
-  | 'deleted';     // 已刪除
+  | 'draft'            // 草稿，尚未發佈
+  | 'pending'          // 等待審核
+  | 'approved-pending' // 已批准-待上架
+  | 'published'        // 已發佈，可被搜索
+  | 'reserved'         // 已預訂，有人有意向購買
+  | 'negotiating'      // 洽談中，買家與賣家正在協商
+  | 'inspecting'       // 實地查看中
+  | 'completed'        // 已完成媒合，但未下架
+  | 'rejected'         // 審核被拒絕
+  | 'sold'             // 已售出/已完成，不再顯示
+  | 'deleted';         // 已刪除
 
 // 審核歷史記錄
 export interface ReviewHistory {

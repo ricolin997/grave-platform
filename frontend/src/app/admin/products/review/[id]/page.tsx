@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowLeft, Check, X, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 
 import { productsApi } from '@/lib/api/products';
 import { Product, ProductStatus, VerificationStatus } from '@/lib/types/product';
@@ -146,24 +147,26 @@ export default function ProductDetailReviewPage() {
   // 獲取狀態文字
   const getStatusText = (status: ProductStatus) => {
     switch (status) {
-      case 'pending':
-        return '待審核';
-      case 'published':
-        return '已發佈';
-      case 'rejected':
-        return '已拒絕';
       case 'draft':
         return '草稿';
+      case 'pending':
+        return '待審核';
+      case 'approved-pending':
+        return '已批准-待上架';
+      case 'published':
+        return '已發佈';
       case 'reserved':
         return '已預訂';
-      case 'sold':
-        return '已售出';
       case 'negotiating':
         return '洽談中';
       case 'inspecting':
         return '實地查看中';
       case 'completed':
-        return '已完成媒合';
+        return '已完成';
+      case 'rejected':
+        return '已拒絕';
+      case 'sold':
+        return '已售出';
       case 'deleted':
         return '已刪除';
       default:
@@ -175,43 +178,43 @@ export default function ProductDetailReviewPage() {
   const handleApprove = async () => {
     try {
       await productsApi.approveProduct(productId, reviewNote);
-      alert('商品已成功批准');
+      toast.success("商品已成功批准，賣家將收到通知");
       router.push('/admin/products/review');
     } catch (err) {
       console.error('批准商品失敗', err);
-      alert('操作失敗，請稍後再試');
+      toast.error("批准商品失敗，請稍後再試");
     }
   };
 
   const handleReject = async () => {
     try {
       if (!rejectionReason.trim()) {
-        alert('請提供拒絕原因');
+        toast.error('請提供拒絕原因');
         return;
       }
       
       await productsApi.rejectProduct(productId, rejectionReason);
-      alert('商品已被拒絕');
+      toast.success('商品已被拒絕');
       router.push('/admin/products/review');
     } catch (err) {
       console.error('拒絕商品失敗', err);
-      alert('操作失敗，請稍後再試');
+      toast.error('操作失敗，請稍後再試');
     }
   };
 
   const handleRequestMoreInfo = async () => {
     try {
       if (!infoRequest.trim()) {
-        alert('請提供需要補充的信息內容');
+        toast.error('請提供需要補充的信息內容');
         return;
       }
       
       await productsApi.requestMoreInfo(productId, infoRequest);
-      alert('已要求賣家提供更多信息');
+      toast.success('已要求賣家提供更多信息');
       router.push('/admin/products/review');
     } catch (err) {
       console.error('請求更多信息失敗', err);
-      alert('操作失敗，請稍後再試');
+      toast.error('操作失敗，請稍後再試');
     }
   };
 
@@ -612,27 +615,38 @@ export default function ProductDetailReviewPage() {
               {product.status === 'pending' ? (
                 <>
                   {showApproveForm && (
-                    <div className="mb-6 border-l-4 border-green-400 p-4 bg-green-50">
-                      <h3 className="font-semibold mb-2">批准商品</h3>
-                      <div className="mb-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          審核備註 (選填)
+                    <div ref={reviewSectionRef} className="p-6 border-t">
+                      <h2 className="text-lg font-semibold mb-4">批准商品</h2>
+                      <div className="space-y-4">
+                        <div>
+                          <p className="text-gray-500 text-sm mb-2">批准後，商品狀態將更新為「已批准-待上架」，賣家需要自行決定何時上架商品</p>
+                          <div>
+                            <label htmlFor="reviewNote" className="block text-sm font-medium text-gray-700 mb-1">
+                              批准備註（選填）
                         </label>
                         <textarea 
+                              id="reviewNote"
                           value={reviewNote}
                           onChange={(e) => setReviewNote(e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                          rows={3}
-                          placeholder="輸入備註信息（可選）"
-                        />
+                              placeholder="請輸入批准備註，例如：商品資料齊全，真實可靠，可以上架販售..."
+                              className="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 min-h-24"
+                            ></textarea>
+                          </div>
                       </div>
                       <div className="flex justify-end">
+                          <button
+                            onClick={() => setShowApproveForm(false)}
+                            className="px-4 py-2 mr-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                          >
+                            取消
+                          </button>
                         <button
                           onClick={handleApprove}
-                          className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                            className="px-4 py-2 rounded-md text-white bg-green-600 hover:bg-green-700"
                         >
                           確認批准
                         </button>
+                        </div>
                       </div>
                     </div>
                   )}

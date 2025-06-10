@@ -3,9 +3,10 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, AlertCircle, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { ArrowLeft, AlertCircle, CheckCircle, XCircle, Clock, DollarSign } from 'lucide-react';
 import { productsApi } from '@/lib/api/products';
 import { Product, ProductStatus, VerificationStatus } from '@/lib/types/product';
+import toast from 'react-hot-toast';
 
 export default function SellerProductDetailPage() {
   const params = useParams();
@@ -13,6 +14,9 @@ export default function SellerProductDetailPage() {
   const [loading, setLoading] = useState(true);
   const [product, setProduct] = useState<Product | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showPriceModal, setShowPriceModal] = useState(false);
+  const [newPrice, setNewPrice] = useState<number | ''>('');
+  const [publishLoading, setPublishLoading] = useState(false);
 
   // 獲取商品詳情
   useEffect(() => {
@@ -80,24 +84,26 @@ export default function SellerProductDetailPage() {
   // 獲取商品狀態文字
   const getStatusText = (status: ProductStatus) => {
     switch (status) {
-      case 'pending':
-        return '待審核';
-      case 'published':
-        return '已發佈';
-      case 'rejected':
-        return '審核被拒';
       case 'draft':
         return '草稿';
+      case 'pending':
+        return '待審核';
+      case 'approved-pending':
+        return '已批准-待上架';
+      case 'published':
+        return '已發佈';
       case 'reserved':
         return '已預訂';
-      case 'sold':
-        return '已售出';
       case 'negotiating':
         return '洽談中';
       case 'inspecting':
         return '實地查看中';
       case 'completed':
-        return '已完成媒合';
+        return '已完成';
+      case 'rejected':
+        return '審核被拒';
+      case 'sold':
+        return '已售出';
       case 'deleted':
         return '已刪除';
       default:
@@ -124,6 +130,10 @@ export default function SellerProductDetailPage() {
     
     if (product.status === 'published') {
       return '您的商品已通過審核並成功發布，可在平台上被買家看到。';
+    }
+
+    if (product.status === 'approved-pending') {
+      return '您的商品已通過審核，請點擊「立即上架」按鈕將商品發布到平台上。';
     }
     
     if (product.status === 'draft') {
@@ -170,6 +180,32 @@ export default function SellerProductDetailPage() {
     }
     
     return <AlertCircle className="h-6 w-6 text-gray-600" />;
+  };
+
+  // 上架商品
+  const handlePublish = async (withPrice: boolean = false) => {
+    try {
+      setPublishLoading(true);
+
+      // 如果需要更新價格
+      if (withPrice && newPrice !== '' && newPrice > 0) {
+        await productsApi.publishProduct(params.id as string, newPrice as number);
+      } else {
+        await productsApi.publishProduct(params.id as string);
+      }
+
+      toast.success('商品已成功上架！');
+      setShowPriceModal(false);
+
+      // 重新取得商品資料
+      const updatedProduct = await productsApi.getProduct(params.id as string);
+      setProduct(updatedProduct);
+    } catch (error) {
+      console.error('上架商品失敗', error);
+      toast.error('上架商品失敗，請稍後再試');
+    } finally {
+      setPublishLoading(false);
+    }
   };
 
   if (loading) {
@@ -261,6 +297,8 @@ export default function SellerProductDetailPage() {
         <div className={`p-4 rounded-md ${
           product.status === 'published' 
             ? 'bg-green-50 border border-green-200' 
+            : product.status === 'approved-pending'
+            ? 'bg-blue-50 border border-blue-200'
             : product.status === 'pending'
             ? 'bg-yellow-50 border border-yellow-200'
             : product.verification.status === 'rejected'
@@ -272,6 +310,8 @@ export default function SellerProductDetailPage() {
           <p className={`${
             product.status === 'published' 
               ? 'text-green-700' 
+              : product.status === 'approved-pending'
+              ? 'text-blue-700'
               : product.status === 'pending'
               ? 'text-yellow-700'
               : product.verification.status === 'rejected'
@@ -282,6 +322,27 @@ export default function SellerProductDetailPage() {
           }`}>
             {getReviewStatusMessage()}
           </p>
+          
+          {/* 審核批准後的上架按鈕 */}
+          {product.status === 'approved-pending' && (
+            <div className="mt-4 flex flex-col sm:flex-row gap-3">
+              <button
+                onClick={() => handlePublish(false)}
+                disabled={publishLoading}
+                className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
+              >
+                {publishLoading ? '處理中...' : '立即上架'}
+              </button>
+              <button
+                onClick={() => setShowPriceModal(true)}
+                disabled={publishLoading}
+                className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+              >
+                <DollarSign className="h-4 w-4 mr-1" />
+                調整價格並上架
+              </button>
+            </div>
+          )}
           
           {(product.verification.status === 'needs_info' || product.verification.status === 'rejected') && (
             <div className="mt-4">
@@ -397,6 +458,50 @@ export default function SellerProductDetailPage() {
           預覽商品頁面
         </Link>
       </div>
+
+      {/* 價格調整彈出視窗 */}
+      {showPriceModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg w-full max-w-md mx-2">
+            <h3 className="text-lg font-medium mb-4">調整價格並上架商品</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              請輸入新的商品價格。目前價格: NT$ {formatPrice(product.basicInfo.price)}
+            </p>
+            <div className="mb-4">
+              <label htmlFor="new-price" className="block text-sm font-medium text-gray-700 mb-1">
+                新價格 (NT$)
+              </label>
+              <input
+                id="new-price"
+                type="number"
+                value={newPrice}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setNewPrice(value === '' ? '' : Number(value));
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder={`${product.basicInfo.price}`}
+                min="1"
+              />
+            </div>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowPriceModal(false)}
+                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              >
+                取消
+              </button>
+              <button
+                onClick={() => handlePublish(true)}
+                disabled={publishLoading || (newPrice !== '' && (newPrice as number) <= 0)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+              >
+                {publishLoading ? '處理中...' : '確認上架'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 } 

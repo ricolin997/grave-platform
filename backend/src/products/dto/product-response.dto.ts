@@ -51,6 +51,8 @@ export class ProductResponseDto {
     status: string;
     documents: string[];
     verifiedAt?: Date;
+    verifier?: string;
+    notes?: string;
   };
   status: string;
   statistics: {
@@ -64,6 +66,7 @@ export class ProductResponseDto {
     createdAt: Date;
     updatedAt: Date;
     publishedAt?: Date;
+    approvedAt?: Date;
     soldAt?: Date;
   };
   isFavorited?: boolean;

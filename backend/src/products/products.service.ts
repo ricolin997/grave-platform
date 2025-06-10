@@ -503,6 +503,54 @@ export class ProductsService {
     }
   }
 
+  /**
+   * 賣家上架商品
+   * @param productId 商品ID
+   * @param userId 用戶ID
+   * @param newPrice 可選的新價格
+   */
+  async publishProduct(productId: string, userId: string, newPrice?: number): Promise<ProductResponseDto> {
+    try {
+      // 檢查產品是否存在
+      const product = await this.productModel.findById(productId);
+      if (!product) {
+        throw new NotFoundException(`未找到ID為 ${productId} 的商品`);
+      }
+
+      // 檢查產品是否屬於當前用戶
+      if (product.sellerId.toString() !== userId) {
+        throw new BadRequestException('您無權上架此商品');
+      }
+
+      // 檢查產品狀態是否為已批准待上架
+      if (product.status !== 'approved-pending') {
+        throw new BadRequestException(`只有已批准待上架的商品可以發布，當前狀態: ${product.status}`);
+      }
+
+      // 如果提供了新價格，更新價格
+      if (newPrice !== undefined && newPrice > 0) {
+        product.basicInfo.price = newPrice;
+      }
+
+      // 更新商品狀態為已發布
+      product.status = 'published';
+      product.metadata.publishedAt = new Date();
+
+      // 保存更新後的產品
+      const updatedProduct = await product.save();
+
+      return this.buildProductResponse(updatedProduct);
+    } catch (error: any) {
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException({
+        message: '上架商品失敗',
+        error: error.message || '未知錯誤'
+      });
+    }
+  }
+
   private async buildProductResponse(
     product: ProductDocument,
     includeSellerName = false,

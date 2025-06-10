@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException, Logger, OnModuleInit } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { ProductsService } from '../products/products.service';
 import { Product, ProductDocument } from '../products/entities/product.entity';
 import { ProductResponseDto } from '../products/dto/product-response.dto';
@@ -9,9 +9,10 @@ import { RolesService } from '../roles/roles.service';
 import { PermissionsService } from '../permissions/permissions.service';
 import { UsersService } from '../users/users.service';
 import { RoleDocument } from '../roles/entities/role.entity';
+import { NotificationsService } from '../notifications/notifications.service';
 
 // 定義產品狀態類型
-type ProductStatus = 'draft' | 'pending' | 'published' | 'reserved' | 'negotiating' | 'inspecting' | 'completed' | 'rejected' | 'sold' | 'deleted';
+type ProductStatus = 'draft' | 'pending' | 'approved-pending' | 'published' | 'reserved' | 'negotiating' | 'inspecting' | 'completed' | 'rejected' | 'sold' | 'deleted';
 
 // 定義 ReviewHistory 接口
 interface ReviewHistory {
@@ -35,6 +36,7 @@ export class AdminService implements OnModuleInit {
     private readonly rolesService: RolesService,
     private readonly permissionsService: PermissionsService,
     private readonly usersService: UsersService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async onModuleInit() {
@@ -100,22 +102,40 @@ export class AdminService implements OnModuleInit {
       throw new ForbiddenException(`只有待審核狀態的商品可以被批准，當前狀態: ${product.status}`);
     }
 
-    // 更新商品狀態和驗證狀態
-    product.status = 'published';
+    // 更新商品狀態為已批准-待上架，而不是直接發布
+    product.status = 'approved-pending';
     product.verification = {
       status: 'verified',
       verifiedAt: new Date(),
       documents: product.verification?.documents || [],
+      notes: note || '已通過審核'
     };
     
-    // 設置發布時間
-    product.metadata.publishedAt = new Date();
+    // 記錄審核時間，但不設置發布時間，因為尚未實際上架
+    if (!product.metadata) {
+      product.metadata = {};
+    }
+    product.metadata.approvedAt = new Date();
 
     // 保存產品
     const updatedProduct = await product.save();
 
     // 創建審核歷史記錄
     await this.createReviewHistory(productId, adminId, 'approve', note || '已通過審核');
+
+    // 發送通知給賣家
+    try {
+      await this.notificationsService.createProductApprovedNotification(
+        product.sellerId.toString(),
+        productId,
+        product.basicInfo.title,
+        note
+      );
+      this.logger.log(`已發送商品批准通知給賣家 ID: ${product.sellerId}`);
+    } catch (error) {
+      this.logger.error(`發送商品批准通知失敗: ${error.message}`, error.stack);
+      // 繼續執行，不阻止整個過程
+    }
 
     // 返回產品響應對象
     const response: ProductResponseDto = {
@@ -129,12 +149,14 @@ export class AdminService implements OnModuleInit {
         status: updatedProduct.verification.status,
         documents: updatedProduct.verification.documents,
         verifiedAt: updatedProduct.verification.verifiedAt,
+        notes: updatedProduct.verification.notes
       },
       status: updatedProduct.status,
       statistics: updatedProduct.statistics,
       metadata: {
         createdAt: updatedProduct.createdAt,
         updatedAt: updatedProduct.updatedAt,
+        approvedAt: updatedProduct.metadata?.approvedAt,
         publishedAt: updatedProduct.metadata?.publishedAt,
         soldAt: updatedProduct.metadata?.soldAt,
       },
@@ -255,8 +277,8 @@ export class AdminService implements OnModuleInit {
     note: string,
   ): Promise<any> {
     const reviewHistory = new this.reviewHistoryModel({
-      productId,
-      adminId,
+      productId: new Types.ObjectId(productId),
+      adminId: new Types.ObjectId(adminId),
       action,
       note,
       createdAt: new Date(),
