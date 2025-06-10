@@ -30,14 +30,30 @@ export default function CreateAdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [loadingRoles, setLoadingRoles] = useState(true);
+  const [roleApiError, setRoleApiError] = useState<string | null>(null);
+  const [debugInfo, setDebugInfo] = useState<string>('');
 
   useEffect(() => {
     async function loadRoles() {
       try {
+        setLoadingRoles(true);
+        setRoleApiError(null);
+        setDebugInfo('正在請求角色列表...');
+        
         const rolesData = await rolesApi.getAllRoles();
         setRoles(rolesData);
+        
+        setDebugInfo(prev => `${prev}\n成功取得 ${rolesData.length} 個角色`);
+        
+        // 檢查是否有角色數據
+        if (rolesData.length === 0) {
+          setRoleApiError('沒有找到任何角色，請先創建角色');
+          setDebugInfo(prev => `${prev}\n警告：角色列表為空`);
+        }
       } catch (err) {
         console.error('獲取角色列表失敗', err);
+        setRoleApiError(`角色API錯誤: ${err instanceof Error ? err.message : String(err)}`);
+        setDebugInfo(prev => `${prev}\n錯誤：${err instanceof Error ? err.message : String(err)}`);
       } finally {
         setLoadingRoles(false);
       }
@@ -95,6 +111,24 @@ export default function CreateAdminPage() {
     }
   };
 
+  // 手動重新加載角色列表
+  const handleReloadRoles = async () => {
+    try {
+      setDebugInfo('手動重新請求角色列表...');
+      setLoadingRoles(true);
+      const rolesData = await rolesApi.getAllRoles();
+      setRoles(rolesData);
+      setDebugInfo(prev => `${prev}\n重新加載成功，取得 ${rolesData.length} 個角色`);
+      if (rolesData.length > 0) {
+        setRoleApiError(null);
+      }
+    } catch (err) {
+      setDebugInfo(prev => `${prev}\n重新加載錯誤：${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setLoadingRoles(false);
+    }
+  };
+
   return (
     <PermissionGuard requiredPermission="canManageUsers" fallback={
       <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-md">
@@ -146,6 +180,29 @@ export default function CreateAdminPage() {
               </div>
               <div className="ml-3">
                 <p className="text-sm font-medium text-red-800">{error}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {roleApiError && (
+          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded-md">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3 flex-1">
+                <p className="text-sm font-medium text-yellow-800">{roleApiError}</p>
+                <div className="mt-2">
+                  <button 
+                    onClick={handleReloadRoles}
+                    className="inline-flex items-center px-3 py-1 border border-transparent text-xs leading-4 font-medium rounded-md text-yellow-700 bg-yellow-100 hover:bg-yellow-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
+                  >
+                    重新加載角色列表
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -234,11 +291,14 @@ export default function CreateAdminPage() {
                 <option value="">請選擇角色</option>
                 {roles.map(role => (
                   <option key={role.id} value={role.id}>
-                    {role.name} - {role.description}
+                    {role.name} {role.description ? `- ${role.description}` : ''}
                   </option>
                 ))}
               </select>
               {loadingRoles && <p className="mt-1 text-xs text-gray-500">加載角色列表中...</p>}
+              {!loadingRoles && roles.length === 0 && (
+                <p className="mt-1 text-xs text-red-500">沒有可用的角色，請先創建角色</p>
+              )}
             </div>
           </div>
 
@@ -252,13 +312,23 @@ export default function CreateAdminPage() {
             </button>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || roles.length === 0}
               className="inline-flex items-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? '創建中...' : '創建管理員'}
             </button>
           </div>
         </form>
+
+        <div className="mt-4">
+          <details className="text-sm text-gray-500">
+            <summary className="cursor-pointer">顯示調試信息</summary>
+            <div className="mt-2 bg-gray-50 p-3 rounded text-xs">
+              <div className="mb-2"><strong>角色數量:</strong> {roles.length}</div>
+              <pre className="whitespace-pre-wrap">{debugInfo || '無調試信息'}</pre>
+            </div>
+          </details>
+        </div>
       </div>
     </PermissionGuard>
   );

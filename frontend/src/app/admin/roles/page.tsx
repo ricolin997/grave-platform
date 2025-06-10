@@ -7,8 +7,30 @@ import { Role } from '@/lib/types/role';
 import { permissionsApi } from '@/lib/api/permissions';
 import { Permission } from '@/lib/types/permission';
 import PermissionGuard from '@/components/admin/PermissionGuard';
+import { useAuth } from '@/lib/contexts/AuthContext';
+
+// 角色層級定義
+const ROLE_LEVELS = {
+  '超級管理員': 1,
+  '商品審核員': 2,
+  '用戶管理員': 2,
+  '客服專員': 3,
+  '內容編輯': 3,
+  '數據分析師': 3
+};
+
+// 審計日誌條目類型
+interface AuditLogEntry {
+  id: string;
+  action: string;
+  roleId: string;
+  roleName: string;
+  performedBy: string;
+  timestamp: Date;
+}
 
 export default function RolesManagementPage() {
+  const { user } = useAuth();
   const [roles, setRoles] = useState<Role[]>([]);
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [loading, setLoading] = useState(true);
@@ -20,6 +42,9 @@ export default function RolesManagementPage() {
     description: '',
   });
   const [editingRole, setEditingRole] = useState<Role | null>(null);
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
+  const [showAuditLogs, setShowAuditLogs] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<Role | null>(null);
 
   // 載入角色列表
   useEffect(() => {
@@ -46,6 +71,42 @@ export default function RolesManagementPage() {
     fetchRolesAndPermissions();
   }, []);
 
+  // 角色層級計算
+  const getRoleLevel = (roleName: string): number => {
+    return ROLE_LEVELS[roleName as keyof typeof ROLE_LEVELS] || 4; // 默認層級最低為4
+  };
+
+  // 檢查當前用戶是否可以管理特定角色
+  const canManageRole = (role: Role): boolean => {
+    // 創辦人可以管理所有角色
+    if (user?.email === 'paul@mumu.com') return true;
+    
+    // 當前登入用戶不是管理員，則無權限管理任何角色
+    if (user?.role !== 'admin') return false;
+    
+    // 超級管理員有所有權限
+    if (user?.permissions?.canManageUsers) return true;
+    
+    return false;
+  };
+
+  // 添加審計日誌
+  const addAuditLog = (action: string, role: Role) => {
+    const newLog: AuditLogEntry = {
+      id: Date.now().toString(),
+      action,
+      roleId: role.id,
+      roleName: role.name,
+      performedBy: user?.name || '未知用戶',
+      timestamp: new Date()
+    };
+    
+    setAuditLogs(prev => [newLog, ...prev]);
+    
+    // 實際應用中這裡應該調用API將審計日誌保存到後端
+    // TODO: 保存審計日誌到後端
+  };
+
   // 處理創建角色
   const handleCreateRole = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,6 +126,9 @@ export default function RolesManagementPage() {
       setNewRole({ name: '', description: '' });
       setShowCreateForm(false);
       setError(null);
+      
+      // 添加審計日誌
+      addAuditLog('創建角色', createdRole);
     } catch (err) {
       console.error('創建角色失敗', err);
       setError('創建角色失敗，請稍後再試');
@@ -91,6 +155,9 @@ export default function RolesManagementPage() {
       ));
       setEditingRole(null);
       setError(null);
+      
+      // 添加審計日誌
+      addAuditLog('更新角色', updatedRole);
     } catch (err) {
       console.error('更新角色失敗', err);
       setError('更新角色失敗，請稍後再試');
@@ -99,6 +166,15 @@ export default function RolesManagementPage() {
 
   // 處理刪除角色
   const handleDeleteRole = async (roleId: string) => {
+    const roleToDelete = roles.find(r => r.id === roleId);
+    if (!roleToDelete) return;
+    
+    // 檢查是否有刪除權限
+    if (!canManageRole(roleToDelete)) {
+      setError(`您沒有權限刪除 ${roleToDelete.name} 角色`);
+      return;
+    }
+    
     if (deleteConfirmation !== roleId) {
       setDeleteConfirmation(roleId);
       return;
@@ -106,6 +182,9 @@ export default function RolesManagementPage() {
     
     try {
       await rolesApi.deleteRole(roleId);
+      
+      // 添加審計日誌
+      addAuditLog('刪除角色', roleToDelete);
       
       setRoles(roles.filter(role => role.id !== roleId));
       setDeleteConfirmation(null);
@@ -118,15 +197,28 @@ export default function RolesManagementPage() {
 
   // 處理更改權限狀態
   const handleTogglePermission = async (roleId: string, permissionCode: string, hasPermission: boolean) => {
+    const targetRole = roles.find(r => r.id === roleId);
+    if (!targetRole) return;
+    
+    // 檢查是否有修改權限
+    if (!canManageRole(targetRole)) {
+      setError(`您沒有權限修改 ${targetRole.name} 角色的權限`);
+      return;
+    }
+    
     try {
       let updatedRole: Role;
       
       if (hasPermission) {
         // 如果已有權限，則撤銷
         updatedRole = await rolesApi.revokePermission(roleId, permissionCode);
+        // 添加審計日誌
+        addAuditLog(`撤銷權限 ${permissionCode}`, targetRole);
       } else {
         // 如果沒有權限，則指派
         updatedRole = await rolesApi.assignPermission(roleId, permissionCode);
+        // 添加審計日誌
+        addAuditLog(`指派權限 ${permissionCode}`, targetRole);
       }
       
       setRoles(roles.map(role => 
@@ -171,6 +263,111 @@ export default function RolesManagementPage() {
       hour: '2-digit',
       minute: '2-digit'
     }).format(date);
+  };
+
+  // 顯示角色審計日誌
+  const handleViewAuditLogs = (role: Role) => {
+    setSelectedRole(role);
+    setShowAuditLogs(true);
+  };
+
+  // 修改角色列表UI部分，添加審計日誌按鈕
+  const renderRolesList = () => {
+    return roles.map(role => (
+      <div key={role.id} className="bg-white shadow rounded-lg mb-6 overflow-hidden">
+        <div className="p-4 border-b border-gray-200 flex justify-between items-start">
+          <div>
+            <h3 className="text-lg font-medium text-gray-900 flex items-center">
+              {role.name}
+              <span className={`ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                getRoleLevel(role.name) === 1 
+                  ? 'bg-purple-100 text-purple-800' 
+                  : getRoleLevel(role.name) === 2 
+                    ? 'bg-blue-100 text-blue-800' 
+                    : 'bg-green-100 text-green-800'
+              }`}>
+                {getRoleLevel(role.name) === 1 ? '最高權限' : getRoleLevel(role.name) === 2 ? '中級權限' : '一般權限'}
+              </span>
+            </h3>
+            <p className="mt-1 text-sm text-gray-500">{role.description}</p>
+            <p className="mt-1 text-xs text-gray-400">創建時間: {formatDate(role.createdAt)}</p>
+          </div>
+          <div className="flex space-x-2">
+            <button
+              onClick={() => handleViewAuditLogs(role)}
+              className="inline-flex items-center px-2.5 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="-ml-0.5 mr-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              審計日誌
+            </button>
+            {canManageRole(role) && (
+              <>
+                <button
+                  onClick={() => setEditingRole(role)}
+                  className="inline-flex items-center px-2.5 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="-ml-0.5 mr-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  </svg>
+                  編輯
+                </button>
+                <button
+                  onClick={() => handleDeleteRole(role.id)}
+                  className={`inline-flex items-center px-2.5 py-1.5 border border-transparent shadow-sm text-xs font-medium rounded ${
+                    deleteConfirmation === role.id
+                      ? 'text-white bg-red-600 hover:bg-red-700'
+                      : 'text-red-700 bg-red-100 hover:bg-red-200'
+                  } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="-ml-0.5 mr-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  {deleteConfirmation === role.id ? '確認刪除' : '刪除'}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+        
+        {/* 角色的權限列表在此展示 */}
+        <div className="p-4">
+          <h4 className="text-sm font-medium text-gray-700 mb-2">權限設置</h4>
+          
+          {Object.entries(resourcePermissions).map(([resource, resourcePerms]) => (
+            <div key={resource} className="mb-4 last:mb-0">
+              <h5 className="text-xs font-medium text-gray-500 uppercase mb-2">{resource}</h5>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                {resourcePerms.map(permission => (
+                  <div 
+                    key={permission.code} 
+                    className={`flex items-center p-2 rounded-md border ${hasPermission(role, permission.code) ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}
+                  >
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">{permission.name}</p>
+                      <p className="text-xs text-gray-500">{permission.description || '無描述'}</p>
+                    </div>
+                    <div>
+                      <button
+                        type="button"
+                        onClick={() => handleTogglePermission(role.id, permission.code, hasPermission(role, permission.code))}
+                        disabled={role.isBuiltIn && permission.code === 'admin.all'}
+                        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${hasPermission(role, permission.code) ? 'bg-indigo-600' : 'bg-gray-200'} ${role.isBuiltIn && permission.code === 'admin.all' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      >
+                        <span
+                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${hasPermission(role, permission.code) ? 'translate-x-5' : 'translate-x-0'}`}
+                        ></span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    ));
   };
 
   return (
@@ -354,82 +551,57 @@ export default function RolesManagementPage() {
             <p className="text-gray-500">目前還沒有角色。點擊「創建角色」按鈕來添加第一個角色。</p>
           </div>
         ) : (
-          <div className="bg-white shadow rounded-lg overflow-hidden">
-            {roles.map((role) => (
-              <div key={role.id} className="border-b border-gray-200 last:border-b-0">
-                <div className="p-4 bg-gray-50">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <h3 className="text-lg font-medium text-gray-900">{role.name}</h3>
-                      <p className="text-sm text-gray-500">{role.description || '無描述'}</p>
-                      <p className="text-xs text-gray-400 mt-1">
-                        ID: {role.id} | 創建時間: {formatDate(role.createdAt)}
-                      </p>
-                    </div>
-                    <div className="mt-2 sm:mt-0 flex space-x-2">
-                      <button
-                        onClick={() => setEditingRole(role)}
-                        className="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-indigo-500"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                        編輯
-                      </button>
-                      <button
-                        onClick={() => handleDeleteRole(role.id)}
-                        disabled={role.isBuiltIn}
-                        className={`inline-flex items-center px-3 py-1.5 border rounded-md text-sm font-medium ${role.isBuiltIn ? 'border-gray-200 text-gray-300 cursor-not-allowed' : deleteConfirmation === role.id ? 'border-red-600 text-white bg-red-600 hover:bg-red-700' : 'border-red-300 text-red-700 bg-white hover:bg-red-50'} focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-red-500`}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                        {deleteConfirmation === role.id ? '確認刪除' : '刪除'}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* 權限列表 */}
-                <div className="p-4">
-                  <h4 className="text-sm font-medium text-gray-700 mb-2">權限設置</h4>
-                  
-                  {Object.entries(resourcePermissions).map(([resource, resourcePerms]) => (
-                    <div key={resource} className="mb-4 last:mb-0">
-                      <h5 className="text-xs font-medium text-gray-500 uppercase mb-2">{resource}</h5>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                        {resourcePerms.map(permission => (
-                          <div 
-                            key={permission.code} 
-                            className={`flex items-center p-2 rounded-md border ${hasPermission(role, permission.code) ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}
-                          >
-                            <div className="flex-1">
-                              <p className="text-sm font-medium">{permission.name}</p>
-                              <p className="text-xs text-gray-500">{permission.description || '無描述'}</p>
-                            </div>
-                            <div>
-                              <button
-                                type="button"
-                                onClick={() => handleTogglePermission(role.id, permission.code, hasPermission(role, permission.code))}
-                                disabled={role.isBuiltIn && permission.code === 'admin.all'}
-                                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${hasPermission(role, permission.code) ? 'bg-indigo-600' : 'bg-gray-200'} ${role.isBuiltIn && permission.code === 'admin.all' ? 'opacity-50 cursor-not-allowed' : ''}`}
-                              >
-                                <span
-                                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${hasPermission(role, permission.code) ? 'translate-x-5' : 'translate-x-0'}`}
-                                ></span>
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
+          <div className="space-y-6">
+            {renderRolesList()}
           </div>
         )}
       </div>
+
+      {/* 顯示角色審計日誌的模態框 */}
+      {showAuditLogs && selectedRole && (
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-2xl w-full">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">{selectedRole.name} - 審計日誌</h2>
+              <button
+                onClick={() => setShowAuditLogs(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            {auditLogs.filter(log => log.roleId === selectedRole.id).length > 0 ? (
+              <div className="overflow-y-auto max-h-96">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作者</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">時間</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {auditLogs
+                      .filter(log => log.roleId === selectedRole.id)
+                      .map(log => (
+                        <tr key={log.id}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{log.action}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{log.performedBy}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(log.timestamp)}</td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-center py-4 text-gray-500">沒有審計日誌記錄</p>
+            )}
+          </div>
+        </div>
+      )}
     </PermissionGuard>
   );
 } 
