@@ -200,6 +200,15 @@ export default function SellerProductsPage() {
           </button>
           
           <button
+            onClick={() => changeStatusFilter('approved-pending')}
+            className={`px-4 py-2 rounded-t-lg ${
+              status === 'approved-pending' ? 'bg-indigo-100 font-medium text-indigo-700' : 'hover:bg-gray-100'
+            }`}
+          >
+            已批准-待上架
+          </button>
+          
+          <button
             onClick={() => changeStatusFilter('published')}
             className={`px-4 py-2 rounded-t-lg ${
               status === 'published' ? 'bg-indigo-100 font-medium text-indigo-700' : 'hover:bg-gray-100'
@@ -370,6 +379,8 @@ export default function SellerProductsPage() {
                             ? 'bg-purple-100 text-purple-800'
                             : product.status === 'inspecting'
                             ? 'bg-indigo-100 text-indigo-800'
+                            : product.status === 'approved-pending'
+                            ? 'bg-blue-100 text-blue-800'
                             : product.status === 'completed'
                             ? 'bg-teal-100 text-teal-800'
                             : 'bg-gray-100 text-gray-800'
@@ -391,6 +402,8 @@ export default function SellerProductsPage() {
                           ? '洽談中'
                           : product.status === 'inspecting'
                           ? '實地查看中'
+                          : product.status === 'approved-pending'
+                          ? '已批准-待上架'
                           : product.status === 'completed'
                           ? '已完成媒合'
                           : '未知'}

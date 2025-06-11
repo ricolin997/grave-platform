@@ -116,6 +116,7 @@ export default function SellerProductDetailPage() {
     if (!product) return 0;
     
     if (product.status === 'published') return 3; // 已完成全部步驟
+    if (product.status === 'approved-pending') return 2; // 已批准待上架
     if (product.verification.status === 'verified') return 2; // 已通過審核
     if (product.verification.status === 'rejected') return 1; // 已拒絕
     if (product.verification.status === 'needs_info') return 1; // 需要更多信息
@@ -161,6 +162,10 @@ export default function SellerProductDetailPage() {
     
     if (product.status === 'published') {
       return <CheckCircle className="h-6 w-6 text-green-600" />;
+    }
+    
+    if (product.status === 'approved-pending') {
+      return <CheckCircle className="h-6 w-6 text-blue-600" />;
     }
     
     if (product.status === 'draft') {
@@ -404,10 +409,12 @@ export default function SellerProductDetailPage() {
                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-${
                   product.status === 'pending' ? 'yellow' : 
                   product.status === 'published' ? 'green' : 
+                  product.status === 'approved-pending' ? 'blue' :
                   product.status === 'rejected' ? 'red' : 'gray'
                 }-100 text-${
                   product.status === 'pending' ? 'yellow' : 
                   product.status === 'published' ? 'green' : 
+                  product.status === 'approved-pending' ? 'blue' :
                   product.status === 'rejected' ? 'red' : 'gray'
                 }-800`}>
                   {getStatusText(product.status)}
